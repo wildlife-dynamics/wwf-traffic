@@ -1,18 +1,16 @@
-name:  # Title Case, e.g. "My Ecoscope Workflow Template"
+name: WWF Traffic
 
 # at least one author is required
 author:
-  - name: ""
-    organization: ""
-    email: ""
+  - name: Tevin Temu
+    organization: Wildlife Dynamics
+    email: tevin@wildlifedynamics.com
 
-description: # A short description
+description: Processes user-uploaded wildlife trafficking incident reports, filters them to incidents within 30km of the Greater Virunga Landscape boundary, and produces an interactive dashboard of trafficking trends by species, incident category, and country.
 
-# todo: add example
-theory: "" # optional
+theory: "Trafficking incident records are joined against a 30km buffer of the Greater Virunga Landscape (GVL) boundary to retain only incidents relevant to the landscape. Species and incident categories are mapped to simplified labels, and records are grouped by species or country of incident to compare trafficking pressure, enforcement outcomes (arrests, convictions, conviction rate), and ivory seizure volumes over time." # optional
 
-# todo: add example
-output_comment: "" # optional
+output_comment: "Outputs an interactive dashboard with summary statistics (total incidents, year-over-year change, most trafficked species, arrests, convictions, conviction rate, total ivory seized), incident and species point maps over the GVL boundary, time-series bar charts of incidents by species and category, and a filterable summary table." # optional
 
 # optional
 # example

@@ -1,0 +1,714 @@
+{
+  "properties": {
+    "workflow_details": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Workflow Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Workflow Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object",
+      "description": "Add information that will help to differentiate this workflow from another.",
+      "title": "Workflow Details"
+    },
+    "time_range": {
+      "additionalProperties": false,
+      "properties": {
+        "since": {
+          "format": "date-time",
+          "title": "Since",
+          "type": "string",
+          "description": "The start time"
+        },
+        "until": {
+          "format": "date-time",
+          "title": "Until",
+          "type": "string",
+          "description": "The end time"
+        },
+        "timezone": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimezoneInfo"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
+        },
+        "time_format": {
+          "default": "%d %b %Y %H:%M:%S",
+          "title": "Time Format",
+          "type": "string",
+          "description": "The time format",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [
+        "since",
+        "until"
+      ],
+      "type": "object",
+      "description": "Choose the period of time to analyze.",
+      "title": "Time Range"
+    },
+    "groupers": {
+      "additionalProperties": false,
+      "properties": {
+        "groupers": {
+          "default": null,
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ValueGrouper"
+              },
+              {
+                "$ref": "#/$defs/TemporalGrouper"
+              },
+              {
+                "$ref": "#/$defs/SpatialGrouper"
+              }
+            ],
+            "title": "Group by"
+          },
+          "title": " ",
+          "type": "array",
+          "description": "            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            "
+        }
+      },
+      "type": "object",
+      "required": [],
+      "title": "Configure Grouping Strategy"
+    },
+    "configure_base_maps": {
+      "additionalProperties": false,
+      "properties": {
+        "base_maps": {
+          "default": [
+            {
+              "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+              "opacity": 1,
+              "max_zoom": 20
+            },
+            {
+              "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+              "opacity": 0.5,
+              "max_zoom": 20
+            }
+          ],
+          "items": {
+            "title": "Base Layer",
+            "anyOf": [
+              {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
+                "properties": {
+                  "url": {
+                    "default": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    "title": "Preset Layer URL",
+                    "type": "string",
+                    "const": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    "enum": [
+                      "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    ]
+                  },
+                  "opacity": {
+                    "default": 1,
+                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "title": "Layer Opacity",
+                    "type": "number"
+                  }
+                },
+                "title": "Open Street Map",
+                "type": "object"
+              },
+              {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
+                "properties": {
+                  "url": {
+                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                    "title": "Preset Layer URL",
+                    "type": "string",
+                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                    "enum": [
+                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                    ]
+                  },
+                  "opacity": {
+                    "default": 1,
+                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "title": "Layer Opacity",
+                    "type": "number"
+                  }
+                },
+                "title": "Roadmap",
+                "type": "object"
+              },
+              {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
+                "properties": {
+                  "url": {
+                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                    "title": "Preset Layer URL",
+                    "type": "string",
+                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                    "enum": [
+                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    ]
+                  },
+                  "opacity": {
+                    "default": 1,
+                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "title": "Layer Opacity",
+                    "type": "number"
+                  }
+                },
+                "title": "Satellite",
+                "type": "object"
+              },
+              {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
+                "properties": {
+                  "url": {
+                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+                    "title": "Preset Layer URL",
+                    "type": "string",
+                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+                    "enum": [
+                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+                    ]
+                  },
+                  "opacity": {
+                    "default": 1,
+                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "title": "Layer Opacity",
+                    "type": "number"
+                  }
+                },
+                "title": "Terrain",
+                "type": "object"
+              },
+              {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
+                "properties": {
+                  "url": {
+                    "default": "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}",
+                    "title": "Preset Layer URL",
+                    "type": "string",
+                    "const": "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}",
+                    "enum": [
+                      "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}"
+                    ]
+                  },
+                  "opacity": {
+                    "default": 1,
+                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "title": "Layer Opacity",
+                    "type": "number"
+                  }
+                },
+                "title": "LandDx",
+                "type": "object"
+              },
+              {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
+                "properties": {
+                  "url": {
+                    "default": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                    "title": "Preset Layer URL",
+                    "type": "string",
+                    "const": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                    "enum": [
+                      "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+                    ]
+                  },
+                  "opacity": {
+                    "default": 1,
+                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "title": "Layer Opacity",
+                    "type": "number"
+                  }
+                },
+                "title": "USGS Hillshade",
+                "type": "object"
+              },
+              {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
+                "properties": {
+                  "url": {
+                    "default": "https://example.tiles.com/{z}/{x}/{y}.png",
+                    "description": "The URL of a publicly accessible tiled raster service.",
+                    "pattern": "https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}([-a-zA-Z0-9()@:%_\\+.~#?&//=\\{\\}]*)",
+                    "title": "Custom Layer URL",
+                    "type": "string"
+                  },
+                  "opacity": {
+                    "default": 1,
+                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "title": "Custom Layer Opacity",
+                    "type": "number"
+                  },
+                  "max_zoom": {
+                    "default": 20,
+                    "description": "Set the maximum zoom level to fetch tiles for.",
+                    "title": "Custom Layer Max Zoom",
+                    "type": "integer"
+                  },
+                  "min_zoom": {
+                    "default": 0,
+                    "description": "Set the minimum zoom level to fetch tiles for.",
+                    "title": "Custom Layer Min Zoom",
+                    "type": "integer"
+                  }
+                },
+                "title": "Custom Layer (Advanced)",
+                "type": "object"
+              }
+            ]
+          },
+          "title": " ",
+          "type": "array",
+          "description": "Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
+          "ecoscope:advanced": true
+        }
+      },
+      "type": "object",
+      "required": [],
+      "title": "Configure Basemaps"
+    },
+    "load_traffic_csvs": {
+      "additionalProperties": false,
+      "properties": {
+        "file_paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "File Paths",
+          "type": "array",
+          "description": "Paths to the CSV files to load and merge."
+        }
+      },
+      "required": [
+        "file_paths"
+      ],
+      "type": "object",
+      "title": "Load Traffic CSV files"
+    },
+    "incident_species_colormap": {
+      "additionalProperties": false,
+      "properties": {
+        "color_palette": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ColormapPalette"
+            },
+            {
+              "$ref": "#/$defs/CustomPalette"
+            }
+          ],
+          "default": {
+            "type_": "palette",
+            "name": "tab10"
+          },
+          "title": "Color Palette"
+        }
+      },
+      "type": "object",
+      "required": [],
+      "title": "Select colormap to use for species and incidents"
+    },
+    "zoom_to_envelope": {
+      "additionalProperties": false,
+      "properties": {
+        "expansion_factor": {
+          "default": 1.5,
+          "title": "Expansion Factor",
+          "type": "number",
+          "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": ""
+    }
+  },
+  "$defs": {
+    "TimezoneInfo": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "tzCode": {
+          "title": "Tzcode",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "utc": {
+          "title": "Utc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tzCode",
+        "name",
+        "utc"
+      ],
+      "title": "TimezoneInfo",
+      "type": "object"
+    },
+    "SpatialGrouper": {
+      "properties": {
+        "spatial_index_name": {
+          "title": "Spatial Regions",
+          "type": "string"
+        }
+      },
+      "required": [
+        "spatial_index_name"
+      ],
+      "title": "Spatial",
+      "type": "object"
+    },
+    "TemporalGrouper": {
+      "properties": {
+        "temporal_index": {
+          "oneOf": [
+            {
+              "const": "%Y",
+              "title": "Year (example: 2024)"
+            },
+            {
+              "const": "%B",
+              "title": "Month (example: September)"
+            },
+            {
+              "const": "%Y-%m",
+              "title": "Year and Month (example: 2023-01)"
+            },
+            {
+              "const": "%j",
+              "title": "Day of the year as a number (example: 365)"
+            },
+            {
+              "const": "%d",
+              "title": "Day of the month as a number (example: 31)"
+            },
+            {
+              "const": "%A",
+              "title": "Day of the week (example: Sunday)"
+            },
+            {
+              "const": "%H",
+              "title": "Hour (24-hour clock) as number (example: 22)"
+            },
+            {
+              "const": "%Y-%m-%d",
+              "title": "Date (example: 2025-01-31)"
+            }
+          ],
+          "title": "Time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "temporal_index"
+      ],
+      "title": "Time",
+      "type": "object"
+    },
+    "ValueGrouper": {
+      "properties": {
+        "index_name": {
+          "title": "Category",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index_name"
+      ],
+      "title": "Category",
+      "type": "object"
+    },
+    "ColormapPalette": {
+      "properties": {
+        "type_": {
+          "const": "palette",
+          "default": "palette",
+          "enum": [
+            "palette"
+          ],
+          "title": "Type ",
+          "type": "string"
+        },
+        "name": {
+          "default": "tab10",
+          "description": "Matplotlib colormap name.",
+          "enum": [
+            "magma",
+            "inferno",
+            "plasma",
+            "viridis",
+            "cividis",
+            "twilight",
+            "twilight_shifted",
+            "turbo",
+            "berlin",
+            "managua",
+            "vanimo",
+            "Blues",
+            "BrBG",
+            "BuGn",
+            "BuPu",
+            "CMRmap",
+            "GnBu",
+            "Greens",
+            "Greys",
+            "OrRd",
+            "Oranges",
+            "PRGn",
+            "PiYG",
+            "PuBu",
+            "PuBuGn",
+            "PuOr",
+            "PuRd",
+            "Purples",
+            "RdBu",
+            "RdGy",
+            "RdPu",
+            "RdYlBu",
+            "RdYlGn",
+            "Reds",
+            "Spectral",
+            "Wistia",
+            "YlGn",
+            "YlGnBu",
+            "YlOrBr",
+            "YlOrRd",
+            "afmhot",
+            "autumn",
+            "binary",
+            "bone",
+            "brg",
+            "bwr",
+            "cool",
+            "coolwarm",
+            "copper",
+            "cubehelix",
+            "flag",
+            "gist_earth",
+            "gist_gray",
+            "gist_heat",
+            "gist_ncar",
+            "gist_rainbow",
+            "gist_stern",
+            "gist_yarg",
+            "gnuplot",
+            "gnuplot2",
+            "gray",
+            "hot",
+            "hsv",
+            "jet",
+            "nipy_spectral",
+            "ocean",
+            "pink",
+            "prism",
+            "rainbow",
+            "seismic",
+            "spring",
+            "summer",
+            "terrain",
+            "winter",
+            "Accent",
+            "okabe_ito",
+            "Dark2",
+            "Paired",
+            "Pastel1",
+            "Pastel2",
+            "Set1",
+            "Set2",
+            "Set3",
+            "tab10",
+            "tab20",
+            "tab20b",
+            "tab20c",
+            "grey",
+            "gist_grey",
+            "gist_yerg",
+            "Grays",
+            "magma_r",
+            "inferno_r",
+            "plasma_r",
+            "viridis_r",
+            "cividis_r",
+            "twilight_r",
+            "twilight_shifted_r",
+            "turbo_r",
+            "berlin_r",
+            "managua_r",
+            "vanimo_r",
+            "Blues_r",
+            "BrBG_r",
+            "BuGn_r",
+            "BuPu_r",
+            "CMRmap_r",
+            "GnBu_r",
+            "Greens_r",
+            "Greys_r",
+            "OrRd_r",
+            "Oranges_r",
+            "PRGn_r",
+            "PiYG_r",
+            "PuBu_r",
+            "PuBuGn_r",
+            "PuOr_r",
+            "PuRd_r",
+            "Purples_r",
+            "RdBu_r",
+            "RdGy_r",
+            "RdPu_r",
+            "RdYlBu_r",
+            "RdYlGn_r",
+            "Reds_r",
+            "Spectral_r",
+            "Wistia_r",
+            "YlGn_r",
+            "YlGnBu_r",
+            "YlOrBr_r",
+            "YlOrRd_r",
+            "afmhot_r",
+            "autumn_r",
+            "binary_r",
+            "bone_r",
+            "brg_r",
+            "bwr_r",
+            "cool_r",
+            "coolwarm_r",
+            "copper_r",
+            "cubehelix_r",
+            "flag_r",
+            "gist_earth_r",
+            "gist_gray_r",
+            "gist_heat_r",
+            "gist_ncar_r",
+            "gist_rainbow_r",
+            "gist_stern_r",
+            "gist_yarg_r",
+            "gnuplot_r",
+            "gnuplot2_r",
+            "gray_r",
+            "hot_r",
+            "hsv_r",
+            "jet_r",
+            "nipy_spectral_r",
+            "ocean_r",
+            "pink_r",
+            "prism_r",
+            "rainbow_r",
+            "seismic_r",
+            "spring_r",
+            "summer_r",
+            "terrain_r",
+            "winter_r",
+            "Accent_r",
+            "okabe_ito_r",
+            "Dark2_r",
+            "Paired_r",
+            "Pastel1_r",
+            "Pastel2_r",
+            "Set1_r",
+            "Set2_r",
+            "Set3_r",
+            "tab10_r",
+            "tab20_r",
+            "tab20b_r",
+            "tab20c_r",
+            "grey_r",
+            "gist_grey_r",
+            "gist_yerg_r",
+            "Grays_r"
+          ],
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "title": "ColormapPalette",
+      "type": "object"
+    },
+    "CustomPalette": {
+      "properties": {
+        "type_": {
+          "const": "custom",
+          "default": "custom",
+          "enum": [
+            "custom"
+          ],
+          "title": "Type ",
+          "type": "string"
+        },
+        "colors": {
+          "description": "Hex colors e.g. ['#e63946', '#457b9d']. Cycles if more categories than colors.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Colors",
+          "type": "array"
+        }
+      },
+      "title": "CustomPalette",
+      "type": "object"
+    }
+  },
+  "uiSchema": {
+    "workflow_details": {
+      "ui:order": [
+        "name",
+        "description"
+      ]
+    },
+    "time_range": {
+      "ui:order": [
+        "since",
+        "until",
+        "timezone",
+        "time_format"
+      ]
+    },
+    "ui:order": [
+      "workflow_details",
+      "time_range",
+      "groupers",
+      "configure_base_maps",
+      "load_traffic_csvs",
+      "incident_species_colormap",
+      "zoom_to_envelope"
+    ]
+  },
+  "additionalProperties": false
+}

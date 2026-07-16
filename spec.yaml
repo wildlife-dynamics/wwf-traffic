@@ -1,12 +1,1070 @@
-id:  # Unique workflow identifier (kebab-case)
-requirements: # Package dependencies with channels
-  - name: ecoscope-workflows-core
-    version: "0.18.0"
+id: wwf_traffic
+requirements:
+  - name: ecoscope-platform
+    version: ">=2.15.0, <2.16.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
-# List of tasks in execution order
-workflow:
-  - name:  # Display name used for the configuration form UI
-    description:  # Description used for the configuration form
-    id:  # Unique task identifier (snake_case)
-    task:  # Function name from task library
+  - name: ecoscope-workflows-ext-custom
+    version: "0.1.0rc14.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-ste
+    version: "0.0.0rc1.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-wwf-virunga
+    version: "0.0.0rc0.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+
+  - name: pydeck
+    version: 0.9.2
+    channel: conda-forge
+
+  - name: opentelemetry-sdk
+    version: ">=1.20.0,<2.0.0"
+    channel: conda-forge
+
+task-instance-defaults:
+  skipif:
+    conditions: 
+      - any_is_empty_df 
+      - any_dependency_skipped 
+
+rjsf-overrides:
+  $defs:
+    # Restrict category options to Country of Incident , Species (common_group)
+    ValueGrouper.properties.index_name.oneOf:
+      - const: common_group
+        title: Species
+
+      - const: country_of_incident
+        title: Country
+  properties:
+    # Restrict groupers to only ValueGroupers (no TemporalGrouper/SpatialGrouper)
+    groupers.properties.groupers.items.anyOf: [
+      {"$ref": "#/$defs/ValueGrouper"},
+    ]
+
+workflow: 
+  - name: Workflow Details 
+    id: workflow_details 
+    task: set_workflow_details 
+
+  - name: Time Range 
+    id: time_range 
+    task: set_time_range 
+  
+  - name: Extract Timezone Selection 
+    id: get_timezone 
+    task: get_timezone_from_time_range
+    partial: 
+      time_range: ${{ workflow.time_range.return }}
+  
+  - name: Configure Grouping Strategy 
+    id: groupers 
+    task: set_groupers
+  
+  - name: Configure Basemaps
+    id: configure_base_maps 
+    task: set_base_maps_pydeck
+
+  - name: Load Traffic CSV files 
+    id: load_traffic_csvs 
+    task: load_and_merge_csvs 
+    partial: 
+      on: "Report ID"
+
+  - name: Map columns
+    id: map_necessary_columns 
+    task: map_columns
+    partial: 
+      df: ${{ workflow.load_traffic_csvs.return }}
+      raise_if_not_found: true 
+      drop_columns: [] 
+      retain_columns: [
+        "Report ID",
+        "Category of Incident_x",
+        "Country of Incident_x",	
+        "Date of Incident_x",
+        "Full Scientific Name",
+        "Item / Commodity Type",
+        "Count",
+        "Weight",
+        "Unit of Weight",
+        "Kingdom",	
+        "Phylum",
+        "Class",
+        "Order",
+        "Family",
+        "Common Name",
+        "Role",
+        "Order in Trade Route",
+        "Country",
+        "Latitude",
+        "Longitude",
+        "Outcome",
+        "Number of People Arrested",
+        "Number of People Charged",	
+        "Number of People Fined",
+        "Number of People Imprisoned",
+        ]
+      rename_columns: {
+        "Report ID": "report_id",
+        "Category of Incident_x": "category_of_incident",
+        "Country of Incident_x": "country_of_incident",
+        "Date of Incident_x": "date_of_incident",
+        "Full Scientific Name":	"full_scientific_name",
+        "Item / Commodity Type": "commodity_type",
+        "Count":"count",
+        "Weight":"weight",
+        "Unit of Weight":"unit_of_weight",
+        "Kingdom":"kingdom",	
+        "Phylum":"phylum",
+        "Class":"class",
+        "Order":"order",
+        "Family":"family",
+        "Common Name":"common_name",
+        "Role":"role",
+        "Order in Trade Route":"order_in_trade_route",
+        "Country":"country",
+        "Latitude":"latitude",
+        "Longitude":"longitude",
+        "Outcome":"outcome",
+        "Number of People Arrested":"no_of_people_arrested",
+        "Number of People Charged":"no_of_people_charged",	
+        "Number of People Fined":"no_of_people_fined",
+        "Number of People Imprisoned":"no_of_people_imprisoned",
+        }
+
+  - name: Retain single values from trade routes 
+    id: single_value_routes 
+    task: extract_trade_route 
+    partial: 
+      df: ${{ workflow.map_necessary_columns.return }}
+      route_roles: ["Origin Location", "Transit Location", "Destination Location"]
+      key: ["report_id", "full_scientific_name", "commodity_type"]
+      role_column: "role"
+      order_column: "order_in_trade_route"
+
+  - name: Convert objects to numeric 
+    id: objects_to_numeric 
+    task: convert_column_values_to_numeric 
+    partial: 
+      df: ${{ workflow.single_value_routes.return }}
+      columns: [
+        "count",
+        "weight",
+        "no_of_people_arrested",
+        "no_of_people_charged",
+        "no_of_people_fined",
+        "no_of_people_imprisoned",
+        "latitude",
+        "longitude"
+        ]
+  
+  - name: Convert dataframe to geodataframe 
+    id: df_gdf 
+    task: df_to_point_gdf 
+    partial: 
+      df: ${{ workflow.objects_to_numeric.return }}
+      latitude_column: "latitude"
+      longitude_column: "longitude"
+      crs: "EPSG:4326"
+  
+  - name: Download GVL BUffer 30km 
+    id: download_gvl_buffer 
+    task: fetch_and_persist_file 
+    partial: 
+      url: "https://www.dropbox.com/scl/fi/nmp88q0hc1163b0i19htg/gvl_30km_buffer.parquet?rlkey=n13oii61yr13vznqjjp5b4ujh&st=7hf9951w&dl=0"
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: true 
+      retries: 3 
+      unzip: false 
+
+  - name: Load gvl gdf 
+    id: load_gvl_gdf 
+    task: load_df 
+    partial: 
+      file_path: ${{ workflow.download_gvl_buffer.return }}
+      layer: null 
+      deserialize_json: false
+
+  - name: Reproject to EPSG 4326 
+    id: reproject_gvl 
+    task: reproject_gdf 
+    partial:  
+      gdf: ${{ workflow.load_gvl_gdf.return }}
+      target_crs: "EPSG:4326"
+  
+  - name: Spatial join gvl with traffic dataset 
+    id: spatial_join_gvl 
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.spatial_join
+    partial: 
+      left_df: ${{ workflow.df_gdf.return }}
+      right_df: ${{ workflow.reproject_gvl.return }}
+      how: "inner"
+      predicate: "within"
+
+  - name: Map species 
+    id: map_species 
+    task: add_mapped_column_value 
+    partial: 
+      df: ${{ workflow.spatial_join_gvl.return }}
+      column: "full_scientific_name"
+      mapping: {
+        'Elephantidae': 'Elephant',
+        'Loxodonta': 'Elephant',
+        'Hippopotamidae': 'Hippo',
+        'Hippopotamus': 'Hippo',
+        'Hippopotamus amphibius': 'Hippo',
+        'Gorilla beringei': 'Gorilla',
+        'Gorilla beringei beringei': 'Gorilla',
+        'Pan troglodytes': 'Chimpanzee',
+        'Panthera leo': 'Lion',
+        'Manidae': 'Pangolin',
+        'Cercopithecus kandti': 'Golden monkey',
+        'Phacochoerus africanus': 'Warthog',
+        'Psittacus erithacus': 'Grey parrot',
+        'Poicephalus robustus fuscicollis': 'Brown-necked parrot',
+        'Gyps africanus': 'White-backed vulture',
+        'Trigonoceps occipitalis': 'White-headed vulture',
+        'Testudinidae': 'Tortoises',
+        'Bovidae': 'Bovids',
+        }
+      new_column: "common_group"
+      default: null 
+      keep_unmapped: true 
+
+  - name: Map category of incident
+    id: map_incident_category 
+    task: add_mapped_column_value 
+    partial: 
+      df: ${{ workflow.map_species.return }}
+      column: "category_of_incident"
+      mapping: {
+        "1. Seizure": "Seizure",
+        "2. Poaching / Illegal Harvesting": "Poaching",
+        "3. Smuggling / Illegal Trade (not elsewhere included)": "Smuggling",
+        "6. Human-Wildlife Conflict": "Human-Wildlife Conflict",
+        "9. Enforcement Action / Prosecution": "Enforcement",
+        }
+      new_column: "incident_category"
+      default: null 
+      keep_unmapped: true 
+
+  - name: Add temporal index 
+    id: add_df_temporal_index 
+    task: add_temporal_index 
+    partial: 
+      df: ${{ workflow.map_incident_category.return }}
+      time_col: "date_of_incident"
+      groupers: ${{ workflow.groupers.return }}
+      cast_to_datetime: true 
+      format: mixed 
+  
+  - name: Decompose date of incident datetime 
+    id: decompose_dai_datetime 
+    task: decompose_datetime 
+    partial: 
+      df: ${{ workflow.add_df_temporal_index.return }}
+      datetime_column: "date_of_incident"
+      components: ["year","month"]
+      remove_source: false 
+      column_prefix: incident 
+  
+  - name: Select colormap to use for species and incidents 
+    id: incident_species_colormap 
+    task: set_color_palette 
+
+  - name: Apply colormap to incidents 
+    id: cmap_incidents 
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.apply_cmap 
+    partial: 
+      df: ${{ workflow.decompose_dai_datetime.return }}
+      input_column_name: "category_of_incident"
+      color_palette: ${{ workflow.incident_species_colormap.return }}
+      output_column_name: "incident_colors"
+      color_format: "rgba_tuple" 
+      alpha: 1.0
+
+  - name: Apply colormap to species
+    id: cmap_species 
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.apply_cmap 
+    partial: 
+      df: ${{ workflow.cmap_incidents.return }}
+      input_column_name: "common_group"
+      color_palette: ${{ workflow.incident_species_colormap.return }}
+      output_column_name: "species_colors"
+      color_format: "rgba_tuple" 
+      alpha: 1.0
+
+  - name: Split gdf by group 
+    id: split_events_by_group 
+    task: split_groups 
+    partial:
+      df: ${{ workflow.cmap_species.return }}
+      groupers: ${{ workflow.groupers.return }}
+  
+  - name: Total number of incidents by year 
+    id: incidents_per_year 
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
+    partial: 
+      group_col: ["incident_year"]
+      agg_col: "report_id"
+      agg_func: "count" 
+      agg_col_name: "no_of_incidents"
+      add_percent: false 
+      pct_col_name: null 
+      decimals: 1
+      sort: null 
+    mapvalues: 
+      argnames: df 
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Total number of incidents by species 
+    id: incidents_species_year 
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
+    partial: 
+      group_col: ["incident_year","common_group"]
+      agg_col: "report_id"
+      agg_func: "count" 
+      agg_col_name: "no_of_incidents"
+      add_percent: false 
+      pct_col_name: null 
+      decimals: 1
+      sort: null 
+    mapvalues: 
+      argnames: df 
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Total number of people arrested 
+    id: total_arrested 
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
+    partial: 
+      group_col: ["incident_year"]
+      agg_col: "no_of_people_arrested"
+      agg_func: "sum" 
+      agg_col_name: "no_of_people_arrested"
+      add_percent: false 
+      pct_col_name: null 
+      decimals: 1
+      sort: null 
+    mapvalues: 
+      argnames: df 
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Total number of people imprisoned
+    id: total_imprisoned
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
+    partial: 
+      group_col: ["incident_year"]
+      agg_col: "no_of_people_imprisoned"
+      agg_func: "sum" 
+      agg_col_name: "no_of_people_imprisoned"
+      add_percent: false 
+      pct_col_name: null 
+      decimals: 1
+      sort: null 
+    mapvalues: 
+      argnames: df 
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Zip total arrested with total imprisoned 
+    id: zip_total_arrested_imprisoned 
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
+    partial:
+      iterables:
+        - ${{ workflow.total_arrested.return }}
+        - ${{ workflow.total_imprisoned.return }}
+
+  - name: Merge total arrested and total imprisoned 
+    id: merge_arrested_imprisoned 
+    task: merge_two_dataframes 
+    partial: 
+      on: "incident_year"
+      how: "inner"
+      left_on: null 
+      right_on: null 
+      left_index: false
+      right_index: false 
+      fillna_value: null
+    mapvalues: 
+      argnames:
+        - left 
+        - right 
+      argvalues: ${{ workflow.zip_total_arrested_imprisoned.return }}
+
+  - name: Add conviction rate column 
+    id: add_conviction_rate 
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.add_ratio_column 
+    partial: 
+      numerator_col: "no_of_people_imprisoned"
+      denominator_col: "no_of_people_arrested"
+      ratio_col_name: "conviction_rate"
+      as_percent: true 
+      fill_invalid: 0.0
+      decimals: 1 
+    mapvalues: 
+      argnames: df
+      argvalues: ${{ workflow.merge_arrested_imprisoned.return }}
+  
+  - name: Filter columns to retain only ivory 
+    id: filter_ivory 
+    task: filter_row_values 
+    partial: 
+      column: "commodity_type"
+      values: ['Ivory Pieces - Raw','Ivory - Worked','Tusk']
+    mapvalues: 
+      argnames: df 
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Total sum of ivory per year
+    id: ivory_weight_per_year 
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
+    partial: 
+      group_col: ["incident_year"]
+      agg_col: "weight"
+      agg_func: "sum" 
+      agg_col_name: "total_seizure_of_ivory"
+      add_percent: false 
+      pct_col_name: null 
+      decimals: 1
+      sort: null 
+    mapvalues: 
+      argnames: df 
+      argvalues: ${{ workflow.filter_ivory.return }}
+
+  - name: Draw time series bar chart incidents by species 
+    id: ts_species_chart
+    task: draw_time_series_bar_chart 
+    partial:  
+      x_axis: "date_of_incident"
+      y_axis: "report_id"
+      category: "common_group"
+      agg_function: "count"
+      time_interval: "year"
+      color_column: "species_colors"
+      plot_style: null 
+      layout_style: null 
+    mapvalues:
+      argnames: dataframe
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Persist Incident bar chart as text
+    id: incidents_bar_html
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: incidents_by_species
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.ts_species_chart.return }}
+
+  - name: Draw time series bar chart incidents by category
+    id: ts_category_chart
+    task: draw_time_series_bar_chart 
+    partial:  
+      x_axis: "date_of_incident"
+      y_axis: "report_id"
+      category: "incident_category"
+      agg_function: "count"
+      time_interval: "year"
+      color_column: "species_colors"
+      plot_style: null 
+      layout_style: null 
+    mapvalues:
+      argnames: dataframe
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Persist Incident bar chart as text
+    id: category_bar_html
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: incidents_by_category
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.ts_category_chart.return }}
+
+  - name: Create GVL boundary layer   
+    id: create_gvl_boundary
+    task: ecoscope_workflows_ext_custom.tasks.results.create_geojson_layer
+    partial: 
+      data_url: null
+      layer_style: 
+        filled: true 
+        stroked: true 
+        extruded: false 
+        wireframe: false
+        get_fill_color: [160, 82, 45]
+        get_line_color: [0, 0, 0]
+        opacity: 0.1125 
+        get_line_width: 1.55
+        get_elevation: 0
+        get_point_radius: 1
+        line_width_units: pixels 
+        line_width_scale: 1 
+        line_width_min_pixels: 1
+        line_width_max_pixels: 5
+      geodataframe: ${{ workflow.reproject_gvl.return }}
+      legend:
+        values:
+          - label: "GVL Overlay 30kms"
+            color: "#a0522d"
+        title: Boundaries
+
+  - name: Create scatterplot layer for category of incidents 
+    id: create_incidents_layer 
+    task: ecoscope_workflows_ext_custom.tasks.results.create_scatterplot_layer
+    partial: 
+      layer_style:
+        get_fill_color: "incident_colors"
+        get_line_color: "incident_colors"
+        get_radius: 1.75
+        opacity: 0.75
+        stroked: true
+      legend:
+        title: Incidents
+        label_column: "incident_category"
+        color_column: "incident_colors"
+        sort: ascending
+      data_url: null
+    mapvalues:  
+      argnames: geodataframe
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Create scatterplot layer for species
+    id: create_species_layer 
+    task: ecoscope_workflows_ext_custom.tasks.results.create_scatterplot_layer
+    partial: 
+      layer_style:
+        get_fill_color: "species_colors"
+        get_line_color: "species_colors"
+        get_radius: 1.75
+        opacity: 0.75
+        stroked: true
+      legend:
+        title: Incidents
+        label_column: "common_group"
+        color_column: "species_colors"
+        sort: ascending
+      data_url: null
+    mapvalues:  
+      argnames: geodataframe
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - title: Map Zoom & Extent
+    type: task-group
+    description: Calculate the geographic extent of the movement tracks and determine an appropriate zoom level and center point for the map. This ensures that all tracks are visible and well-framed when the map is rendered.
+    tasks:
+      - name: null
+        id: zoom_to_envelope 
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.envelope_gdf
+        # partial:
+        #   expansion_factor: 1.05
+        mapvalues: 
+          argnames: gdf 
+          argvalues: ${{ workflow.split_events_by_group.return }}
+  
+      - name: Zoom view to gdf extent
+        id: gdf_image_extent
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.compute_view_state_from_gdf
+        partial:
+          pitch: 0
+          bearing: 0
+          max_zoom: 12
+        mapvalues:
+          argnames: gdf
+          argvalues: ${{ workflow.zoom_to_envelope.return }}
+
+  - name: Combine gvl layers with incident layers
+    id: combined_gvl_incident_layers 
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
+    partial:
+      static_layers: ${{ workflow.create_gvl_boundary.return }}
+    mapvalues:
+      argnames: grouped_layers
+      argvalues: ${{ workflow.create_incidents_layer.return }}
+
+  - name: Combine gvl layers with species layers
+    id: combined_gvl_species_layers 
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
+    partial:
+      static_layers: ${{ workflow.create_gvl_boundary.return }}
+    mapvalues:
+      argnames: grouped_layers
+      argvalues: ${{ workflow.create_species_layer.return }}
+
+  - name: Combine gvl incident layers with view state
+    id: zip_incidents_with_viewstate
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
+    partial:
+      iterables:
+        - ${{ workflow.combined_gvl_incident_layers.return }}
+        - ${{ workflow.gdf_image_extent.return }}
+
+  - name: Combine gvl species layers with view state
+    id: zip_species_with_viewstate
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
+    partial:
+      iterables:
+        - ${{ workflow.combined_gvl_species_layers.return }}
+        - ${{ workflow.gdf_image_extent.return }}
+
+  - name: Draw incidents map
+    id: draw_incidents_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map 
+    partial: 
+      tile_layers: ${{ workflow.configure_base_maps.return }}
+      static: false
+      title: null 
+      max_zoom: 10
+      legend_style: 
+        placement: bottom-right
+    mapvalues:
+      argnames: 
+        - geo_layers 
+        - view_state
+      argvalues: ${{ workflow.zip_incidents_with_viewstate.return }}
+
+  - name: Draw species map
+    id: draw_species_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map 
+    partial: 
+      tile_layers: ${{ workflow.configure_base_maps.return }}
+      static: false
+      title: null 
+      max_zoom: 10
+      legend_style: 
+        placement: bottom-right
+    mapvalues:
+      argnames: 
+        - geo_layers 
+        - view_state
+      argvalues: ${{ workflow.zip_species_with_viewstate.return }}
+
+  - name: Persist Incidents map as text
+    id: incidents_map_html
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: incidents_by_category
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.draw_incidents_map.return }}
+
+  - name: Persist species map as text
+    id: species_map_html
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: incidents_by_species
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.draw_species_map.return }}
+
+  - name: Subset columns 
+    id: subset_traffic_columns 
+    task: subset_columns
+    partial: 
+      columns: 
+        - "date_of_incident"
+        - "incident_category"
+        - "role"
+        - "common_group"
+      exclude: null 
+      strict: false 
+    mapvalues: 
+      argnames: df 
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Render filterd table
+    id: filtered_table_html
+    task: draw_table
+    partial:
+      columns: null 
+      table_config: 
+        enable_sorting: true
+        enable_filtering: true
+        enable_download: false
+        hide_header: false
+      widget_id: "Summary table of incidents"
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.subset_traffic_columns.return }}
+
+  - name: Persist filtered table
+    id: filtered_table_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: summary_table_of_incidents
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.filtered_table_html.return }}
+
+  # ============================================================
+  # Widgets: wrap existing map / chart / table outputs
+  # ============================================================
+
+  - name: Create Incidents Map widget
+    id: widget_incidents_map
+    task: create_map_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Incidents Map"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.incidents_map_html.return }}
+
+  - name: Merge per group Incidents Map widgets
+    id: widget_incidents_map_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_incidents_map.return }}
+
+  - name: Create Species Map widget
+    id: widget_species_map
+    task: create_map_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Species Map"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.species_map_html.return }}
+
+  - name: Merge per group Species Map widgets
+    id: widget_species_map_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_species_map.return }}
+
+  - name: Create Incidents by Species Chart widget
+    id: widget_incidents_species_chart
+    task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Incidents by Species Over Time"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.incidents_bar_html.return }}
+
+  - name: Merge per group Incidents by Species Chart widgets
+    id: species_chart_widget_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_incidents_species_chart.return }}
+
+  - name: Create Incidents by Category Chart widget
+    id: widget_incidents_category_chart
+    task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Incidents by Category Over Time"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.category_bar_html.return }}
+
+  - name: Merge per group Incidents by Category Chart widgets
+    id: category_chart_widget_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_incidents_category_chart.return }}
+
+  - name: Create Summary Table widget
+    id: widget_summary_table
+    task: create_table_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Summary Table of Incidents"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.filtered_table_html_url.return }}
+
+  - name: Merge per group Summary Table widgets
+    id: widget_summary_table_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_summary_table.return }}
+
+  # ============================================================
+  # Widgets: comparison / summary stat cards
+  # ============================================================
+
+  - name: Sum total incidents
+    id: total_incidents_sum
+    task: dataframe_column_sum
+    partial:
+      column_name: "no_of_incidents"
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.incidents_per_year.return }}
+
+  - name: Create Total Incidents widget
+    id: widget_total_incidents
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Total Number of Incidents"
+      decimal_places: 0
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.total_incidents_sum.return }}
+
+  - name: Merge per group Total Incidents widgets
+    id: widget_total_incidents_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_total_incidents.return }}
+
+  - name: Create Incidents Period-over-Period widget
+    id: widget_incidents_yoy
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.create_period_comparison_widget
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: "Incidents This Year vs Last Year"
+      period_col: "incident_year"
+      value_col: "no_of_incidents"
+      decimal_places: 0
+      current_period: null
+    map:
+      argnames: [view, df]
+      argvalues: ${{ workflow.incidents_per_year.return }}
+
+  - name: Merge per group Incidents Period-over-Period widgets
+    id: widget_incidents_yoy_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_incidents_yoy.return }}
+
+  - name: Total incidents by species (all years)
+    id: species_totals
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by
+    partial:
+      group_col: ["common_group"]
+      agg_col: "report_id"
+      agg_func: "count"
+      agg_col_name: "no_of_incidents"
+      add_percent: false
+      pct_col_name: null
+      decimals: 1
+      sort: null
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_events_by_group.return }}
+
+  - name: Top trafficked species label
+    id: top_species_label
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.get_top_category
+    partial:
+      category_col: "common_group"
+      value_col: "no_of_incidents"
+      suffix: " incidents"
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.species_totals.return }}
+
+  - name: Create Most Trafficked Species widget
+    id: widget_top_species
+    task: create_text_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Most Frequently Trafficked Flagship Species"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.top_species_label.return }}
+
+  - name: Merge per group Most Trafficked Species widgets
+    id: widget_top_species_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_top_species.return }}
+
+  - name: Sum total arrested
+    id: total_arrested_sum
+    task: dataframe_column_sum
+    partial:
+      column_name: "no_of_people_arrested"
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.total_arrested.return }}
+
+  - name: Create Total Arrested widget
+    id: widget_total_arrested
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Total Suspects Arrested"
+      decimal_places: 0
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.total_arrested_sum.return }}
+
+  - name: Merge per group Total Arrested widgets
+    id: widget_total_arrested_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_total_arrested.return }}
+
+  - name: Sum total convicted
+    id: total_convicted_sum
+    task: dataframe_column_sum
+    partial:
+      column_name: "no_of_people_imprisoned"
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.total_imprisoned.return }}
+
+  - name: Create Total Convicted widget
+    id: widget_total_convicted
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Total Suspects Convicted"
+      decimal_places: 0
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.total_convicted_sum.return }}
+
+  - name: Merge per group Total Convicted widgets
+    id: widget_total_convicted_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_total_convicted.return }}
+
+  - name: Zip arrested and convicted sums
+    id: zip_arrested_convicted_sums
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
+    partial:
+      iterables:
+        - ${{ workflow.total_convicted_sum.return }}
+        - ${{ workflow.total_arrested_sum.return }}
+
+  - name: Divide convicted by arrested
+    id: conviction_ratio
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.safe_divide
+    partial:
+      fill_invalid: 0.0
+    mapvalues:
+      argnames: [a, b]
+      argvalues: ${{ workflow.zip_arrested_convicted_sums.return }}
+
+  - name: Convert ratio to percent
+    id: conviction_rate_pct
+    task: apply_arithmetic_operation
+    partial:
+      b: 100
+      operation: "multiply"
+    mapvalues:
+      argnames: a
+      argvalues: ${{ workflow.conviction_ratio.return }}
+
+  - name: Create Conviction Rate widget
+    id: widget_conviction_rate
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Conviction Rate"
+      decimal_places: 1
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.conviction_rate_pct.return }}
+
+  - name: Merge per group Conviction Rate widgets
+    id: widget_conviction_rate_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_conviction_rate.return }}
+
+  - name: Sum total ivory seized
+    id: total_ivory_sum
+    task: dataframe_column_sum
+    partial:
+      column_name: "total_seizure_of_ivory"
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.ivory_weight_per_year.return }}
+
+  - name: Create Total Ivory Seized widget
+    id: widget_total_ivory
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - any_is_empty_df
+    partial:
+      title: "Total Seizures of Ivory (kg)"
+      decimal_places: 1
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.total_ivory_sum.return }}
+
+  - name: Merge per group Total Ivory Seized widgets
+    id: widget_total_ivory_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_total_ivory.return }}
+
+  - name: WWF Traffic Dashboard
+    id: wwf_traffic_dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return }}
+      widgets:
+        - ${{ workflow.widget_total_incidents_grouped.return }}
+        - ${{ workflow.widget_incidents_yoy_grouped.return }}
+        - ${{ workflow.widget_top_species_grouped.return }}
+        - ${{ workflow.widget_total_arrested_grouped.return }}
+        - ${{ workflow.widget_total_convicted_grouped.return }}
+        - ${{ workflow.widget_conviction_rate_grouped.return }}
+        - ${{ workflow.widget_total_ivory_grouped.return }}
+        - ${{ workflow.widget_incidents_map_grouped.return }}
+        - ${{ workflow.widget_species_map_grouped.return }}
+        - ${{ workflow.species_chart_widget_grouped.return }}
+        - ${{ workflow.category_chart_widget_grouped.return }}
+        - ${{ workflow.widget_summary_table_grouped.return }}
+
+      time_range: ${{ workflow.time_range.return }}
+      groupers: ${{ workflow.groupers.return }}
