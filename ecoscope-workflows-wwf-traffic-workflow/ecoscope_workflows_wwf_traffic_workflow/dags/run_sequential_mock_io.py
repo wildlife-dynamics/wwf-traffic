@@ -493,6 +493,28 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
+    retain_gvl_countries = (
+        task(filter_row_values)
+        .validate()
+        .set_task_instance_id("retain_gvl_countries")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=spatial_join_gvl,
+            column="country_of_incident",
+            values=["Rwanda", "Uganda", "Congo, Democratic Republic of The"],
+            **(params.get("retain_gvl_countries") or {}),
+        )
+        .call()
+    )
+
     map_species = (
         task(add_mapped_column_value)
         .validate()
@@ -507,7 +529,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            df=spatial_join_gvl,
+            df=retain_gvl_countries,
             column="full_scientific_name",
             mapping={
                 "Elephantidae": "Elephant",
@@ -1043,13 +1065,13 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             data_url=None,
             layer_style={
-                "filled": True,
+                "filled": False,
                 "stroked": True,
                 "extruded": False,
                 "wireframe": False,
-                "get_fill_color": [160, 82, 45],
+                "get_fill_color": None,
                 "get_line_color": [0, 0, 0],
-                "opacity": 0.1125,
+                "opacity": 0.45,
                 "get_line_width": 1.55,
                 "get_elevation": 0,
                 "get_point_radius": 1,
@@ -1060,7 +1082,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             },
             geodataframe=reproject_gvl,
             legend={
-                "values": [{"label": "GVL Overlay 30kms", "color": "#a0522d"}],
+                "values": [{"label": "GVL Overlay 30kms", "color": "#000000"}],
                 "title": "Boundaries",
             },
             **(params.get("create_gvl_boundary") or {}),
@@ -1085,7 +1107,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             layer_style={
                 "get_fill_color": "incident_colors",
                 "get_line_color": "incident_colors",
-                "get_radius": 1.75,
+                "get_radius": 2.35,
                 "opacity": 0.75,
                 "stroked": True,
             },
@@ -1118,7 +1140,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             layer_style={
                 "get_fill_color": "species_colors",
                 "get_line_color": "species_colors",
-                "get_radius": 1.75,
+                "get_radius": 2.35,
                 "opacity": 0.75,
                 "stroked": True,
             },

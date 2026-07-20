@@ -206,11 +206,22 @@ workflow:
       how: "inner"
       predicate: "within"
 
+  - name: Retain GVL countries only 
+    id: retain_gvl_countries
+    task: filter_row_values
+    partial: 
+      df: ${{ workflow.spatial_join_gvl.return }}
+      column: "country_of_incident"
+      values: 
+        - "Rwanda"
+        - "Uganda"
+        - "Congo, Democratic Republic of The"
+
   - name: Map species 
     id: map_species 
     task: add_mapped_column_value 
     partial: 
-      df: ${{ workflow.spatial_join_gvl.return }}
+      df: ${{ workflow.retain_gvl_countries.return }}
       column: "full_scientific_name"
       mapping: {
         'Elephantidae': 'Elephant',
@@ -498,13 +509,13 @@ workflow:
     partial: 
       data_url: null
       layer_style: 
-        filled: true 
+        filled: false
         stroked: true 
         extruded: false 
         wireframe: false
-        get_fill_color: [160, 82, 45]
+        get_fill_color: null #[160, 82, 45]
         get_line_color: [0, 0, 0]
-        opacity: 0.1125 
+        opacity: 0.45
         get_line_width: 1.55
         get_elevation: 0
         get_point_radius: 1
@@ -516,7 +527,7 @@ workflow:
       legend:
         values:
           - label: "GVL Overlay 30kms"
-            color: "#a0522d"
+            color: "#000000"
         title: Boundaries
 
   - name: Create scatterplot layer for category of incidents 
@@ -526,7 +537,7 @@ workflow:
       layer_style:
         get_fill_color: "incident_colors"
         get_line_color: "incident_colors"
-        get_radius: 1.75
+        get_radius: 2.35
         opacity: 0.75
         stroked: true
       legend:
@@ -546,7 +557,7 @@ workflow:
       layer_style:
         get_fill_color: "species_colors"
         get_line_color: "species_colors"
-        get_radius: 1.75
+        get_radius: 2.35
         opacity: 0.75
         stroked: true
       legend:
