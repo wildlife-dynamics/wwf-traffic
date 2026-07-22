@@ -13,9 +13,8 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-wwf-virunga
-    version: "0.0.0rc0.*"
+    version: "0.0.0rc1.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-
 
   - name: pydeck
     version: 0.9.2
@@ -461,7 +460,7 @@ workflow:
       agg_function: "count"
       time_interval: "year"
       color_column: "species_colors"
-      plot_style: null 
+      plot_style: null
       layout_style: null 
     mapvalues:
       argnames: dataframe
@@ -516,7 +515,7 @@ workflow:
         get_fill_color: null #[160, 82, 45]
         get_line_color: [0, 0, 0]
         opacity: 0.45
-        get_line_width: 1.55
+        get_line_width: 1.25
         get_elevation: 0
         get_point_radius: 1
         line_width_units: pixels 
@@ -526,7 +525,7 @@ workflow:
       geodataframe: ${{ workflow.reproject_gvl.return }}
       legend:
         values:
-          - label: "GVL Overlay 30kms"
+          - label: "GVL Boundary (30km buffer)"
             color: "#000000"
         title: Boundaries
 
@@ -705,6 +704,22 @@ workflow:
       argnames: df 
       argvalues: ${{ workflow.split_events_by_group.return }}
 
+  - name: Rename summary table columns
+    id: rename_summary_table
+    task: map_columns
+    partial:
+      raise_if_not_found: false
+      drop_columns: []
+      retain_columns: [] 
+      rename_columns: 
+        date_of_incident: Date
+        incident_category: "Incident Category"
+        role: Role 
+        common_group: Species
+    mapvalues:
+      argnames: df 
+      argvalues: ${{ workflow.subset_traffic_columns.return }}
+
   - name: Render filterd table
     id: filtered_table_html
     task: draw_table
@@ -718,7 +733,7 @@ workflow:
       widget_id: "Summary table of incidents"
     mapvalues: 
       argnames: dataframe 
-      argvalues: ${{ workflow.subset_traffic_columns.return }}
+      argvalues: ${{ workflow.rename_summary_table.return }}
 
   - name: Persist filtered table
     id: filtered_table_html_url
@@ -729,6 +744,17 @@ workflow:
     mapvalues:
       argnames: text
       argvalues: ${{ workflow.filtered_table_html.return }}
+
+  - name: Persist csv 
+    id: persist_csv 
+    task: persist_df
+    partial:
+      filetype: csv
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+    mapvalues: 
+      argnames: df
+      argvalues: ${{ workflow.split_events_by_group.return }}
 
   # ============================================================
   # Widgets: wrap existing map / chart / table outputs
@@ -912,7 +938,7 @@ workflow:
       conditions:
         - any_is_empty_df
     partial:
-      title: "Most Frequently Trafficked Flagship Species"
+      title: "Top Trafficked Species"
     map:
       argnames: [view, data]
       argvalues: ${{ workflow.top_species_label.return }}

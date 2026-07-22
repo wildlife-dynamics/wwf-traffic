@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Technical Guide — WWF Traffic Workflow</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="brand" href="index.html">WWF Traffic</a>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="user-guide.html">User Guide</a>
+        <a href="technical-guide.html" class="active">Technical Guide</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a href="https://github.com/wildlife-dynamics/wwf-traffic">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Technical Guide</h1>
+    <p class="lede">A deeper look at how the WWF Traffic Workflow is built: the multi-file CSV merge pipeline, GVL spatial filtering, map and chart methodology, and metric calculations.</p>
+
+    <p>
+      <a href="assets/wwf_traffic_technical_guide.pdf">Download the full Technical Guide (PDF)</a>
+    </p>
+    <p>Unlike the EarthRanger-connected workflows in this fleet, WWF Traffic has no live data source &mdash; all input data is supplied as CSV uploads, and the only network dependency is a one-time Dropbox download of the GVL boundary file. This guide was written directly against the current <code>spec.yaml</code>.</p>
+
+    <h2>Contents</h2>
+    <ol>
+      <li>Overview</li>
+      <li>Dependencies &amp; Prerequisites
+        <ol type="a">
+          <li>Input Data &mdash; Three Merged CSV Files</li>
+          <li>Grouping Strategy</li>
+          <li>GVL 30 km Buffer Boundary</li>
+          <li>Base Map Tile Layers</li>
+          <li>Colour Palette</li>
+        </ol>
+      </li>
+      <li>Data Ingestion Pipeline
+        <ol type="a">
+          <li>Column Mapping</li>
+          <li>Trade Route De-duplication</li>
+          <li>Numeric Conversion &amp; Geometry</li>
+          <li>Spatial Join Against the GVL Boundary</li>
+          <li>Country Restriction</li>
+          <li>Species &amp; Category Mapping</li>
+          <li>Temporal Index</li>
+        </ol>
+      </li>
+      <li>Static Map Layers
+        <ol type="a"><li>GVL Boundary Layer</li></ol>
+      </li>
+      <li>Map Outputs &mdash; Methodology
+        <ol type="a">
+          <li>Incidents Map</li>
+          <li>Species Map</li>
+          <li>Filename Suffix Collision</li>
+        </ol>
+      </li>
+      <li>Charts
+        <ol type="a"><li>Incidents by Species / by Category</li></ol>
+      </li>
+      <li>Summary Metrics
+        <ol type="a">
+          <li>Per-Year Aggregations</li>
+          <li>Conviction Rate &mdash; Two Independent Calculations</li>
+          <li>Ivory Seizures</li>
+          <li>Most Trafficked Species</li>
+        </ol>
+      </li>
+      <li>Summary Table &amp; CSV Export</li>
+      <li>Interactive Dashboard</li>
+      <li>Output Files</li>
+      <li>Workflow Execution Logic
+        <ol type="a">
+          <li>Skip Conditions</li>
+          <li>Data Flow Summary</li>
+        </ol>
+      </li>
+      <li>Software Versions</li>
+    </ol>
+
+    <h2>Read it here</h2>
+    <p>The guide is embedded below. If it doesn't render in your browser, use the download link above.</p>
+    <embed src="assets/wwf_traffic_technical_guide.pdf" type="application/pdf" width="100%" height="900px" style="border: 1px solid #d8e8d8; border-radius: 6px;" />
+  </main>
+
+  <footer class="site-footer">
+    <p>WWF Traffic Workflow &middot; <a href="https://github.com/wildlife-dynamics/wwf-traffic">wildlife-dynamics/wwf-traffic</a> on GitHub</p>
+  </footer>
+</body>
+</html>

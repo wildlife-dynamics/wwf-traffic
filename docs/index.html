@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WWF Traffic Workflow</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="brand" href="index.html">WWF Traffic</a>
+      <nav>
+        <a href="index.html" class="active">Overview</a>
+        <a href="user-guide.html">User Guide</a>
+        <a href="technical-guide.html">Technical Guide</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a href="https://github.com/wildlife-dynamics/wwf-traffic">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>WWF Traffic Workflow</h1>
+    <p class="lede">Processes user-uploaded wildlife trafficking incident reports, filters them to incidents within a 30km buffer of the Greater Virunga Landscape (GVL) boundary, and produces an interactive dashboard of trafficking trends by species, incident category, and country.</p>
+
+    <div class="card-grid">
+      <a class="card" href="user-guide.html">
+        <h3>User Guide</h3>
+        <p>Step-by-step instructions for loading, configuring, and running the workflow.</p>
+      </a>
+      <a class="card" href="technical-guide.html">
+        <h3>Technical Guide</h3>
+        <p>Deeper look at the workflow's internals &mdash; the CSV merge pipeline, map/chart methodology, and metric calculations.</p>
+      </a>
+      <a class="card" href="troubleshooting.html">
+        <h3>Troubleshooting</h3>
+        <p>Common errors you may hit while configuring or running the workflow, and how to resolve them.</p>
+      </a>
+    </div>
+
+    <h2>What it produces</h2>
+    <ul>
+      <li><strong>Summary stat widgets</strong> &mdash; Total Incidents, Incidents This Year vs Last Year, Most Trafficked Species, Total Suspects Arrested, Total Suspects Convicted, Conviction Rate, and Total Seizures of Ivory (kg)</li>
+      <li>An <strong>Incidents Map</strong> &mdash; point map of trafficking incidents coloured by incident category, overlaid on the GVL boundary</li>
+      <li>A <strong>Species Map</strong> &mdash; point map of trafficking incidents coloured by mapped species group, overlaid on the GVL boundary</li>
+      <li>An <strong>Incidents by Species chart</strong> and an <strong>Incidents by Category chart</strong> &mdash; time-series bar charts of incident counts per year</li>
+      <li>A <strong>Summary Table</strong> &mdash; filterable/sortable table of individual incidents</li>
+      <li>A <strong>per-group CSV export</strong> of the full processed incident dataset</li>
+    </ul>
+
+    <h2>Requirements</h2>
+    <p><strong>Three CSV exports from the TRAFFIC dataset</strong>, uploaded together, all sharing a common <code>Report ID</code> column &mdash; an incident/case file, a species/commodity file, and a trade-route/location file. No single export contains all the columns this workflow needs. See the <a href="user-guide.html#requirements">User Guide</a> for the exact column breakdown.</p>
+    <p>The GVL 30km buffer boundary is downloaded automatically from Dropbox at runtime &mdash; no local copy is required.</p>
+
+    <h2>Get started</h2>
+    <p>New to the workflow? Start with the <a href="user-guide.html">User Guide</a> for a walkthrough of loading the template, uploading the three required CSV files, and configuring the grouping strategy. Running into an error? Check <a href="troubleshooting.html">Troubleshooting</a> first.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>WWF Traffic Workflow &middot; <a href="https://github.com/wildlife-dynamics/wwf-traffic">wildlife-dynamics/wwf-traffic</a> on GitHub</p>
+  </footer>
+</body>
+</html>

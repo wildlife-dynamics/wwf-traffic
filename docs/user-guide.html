@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Guide — WWF Traffic Workflow</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="brand" href="index.html">WWF Traffic</a>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="user-guide.html" class="active">User Guide</a>
+        <a href="technical-guide.html">Technical Guide</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a href="https://github.com/wildlife-dynamics/wwf-traffic">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>WWF Traffic Workflow &mdash; User Guide</h1>
+    <p class="lede">This guide walks you through loading, configuring, and running the WWF Traffic Workflow, which processes user-uploaded wildlife trafficking incident reports, filters them to incidents within a 30km buffer of the Greater Virunga Landscape (GVL) boundary, and produces an interactive dashboard of trafficking trends by species, incident category, and country.</p>
+
+    <h2>What it produces</h2>
+    <ul>
+      <li><strong>Summary stat widgets</strong> &mdash; Total Incidents, Incidents This Year vs Last Year, Most Trafficked Species, Total Suspects Arrested, Total Suspects Convicted, Conviction Rate, and Total Seizures of Ivory (kg)</li>
+      <li>An <strong>Incidents Map</strong> &mdash; point map of trafficking incidents coloured by incident category, overlaid on the GVL boundary</li>
+      <li>A <strong>Species Map</strong> &mdash; point map of trafficking incidents coloured by mapped species group, overlaid on the GVL boundary</li>
+      <li>An <strong>Incidents by Species chart</strong> &mdash; time-series bar chart of incident counts per year, broken down by species</li>
+      <li>An <strong>Incidents by Category chart</strong> &mdash; time-series bar chart of incident counts per year, broken down by incident category</li>
+      <li>A <strong>Summary Table</strong> &mdash; filterable/sortable table of individual incidents (date, category, role, species)</li>
+      <li>A <strong>per-group CSV export</strong> of the full processed incident dataset</li>
+    </ul>
+    <p>All widgets are grouped by whichever grouping strategy you configure (Species or Country of Incident, or one combined view if left blank) and assembled into a single dashboard.</p>
+
+    <h2 id="requirements">Requirements</h2>
+    <p><strong>Three CSV exports from the TRAFFIC dataset</strong>, uploaded together, all sharing a common <code>Report ID</code> column used to merge them. This workflow reads columns spread across multiple files &mdash; no single export contains everything it needs:</p>
+    <ul>
+      <li>An <strong>incident/case file</strong> &mdash; <code>Report ID</code>, <code>Category of Incident</code>, <code>Country of Incident</code>, <code>Date of Incident</code>, <code>Outcome</code>, <code>Number of People Arrested</code>, <code>Number of People Charged</code>, <code>Number of People Fined</code>, <code>Number of People Imprisoned</code></li>
+      <li>A <strong>species/commodity file</strong> &mdash; <code>Report ID</code>, <code>Full Scientific Name</code>, <code>Item / Commodity Type</code>, <code>Count</code>, <code>Weight</code>, <code>Unit of Weight</code>, <code>Kingdom</code>, <code>Phylum</code>, <code>Class</code>, <code>Order</code>, <code>Family</code>, <code>Common Name</code></li>
+      <li>A <strong>trade-route/location file</strong> &mdash; <code>Report ID</code>, <code>Role</code>, <code>Order in Trade Route</code>, <code>Country</code>, <code>Latitude</code>, <code>Longitude</code></li>
+    </ul>
+    <p><code>Category of Incident</code>, <code>Country of Incident</code>, and <code>Date of Incident</code> appear in more than one of the three files. After merging, only the version from the first-loaded file is kept (internally suffixed <code>_x</code>) &mdash; make sure that file's values are the ones you want retained for those three columns.</p>
+    <p>The GVL 30km buffer boundary is downloaded automatically from Dropbox at runtime &mdash; no local copy is required.</p>
+
+    <h2 id="load">1. Load the Workflow</h2>
+    <p>In the workflow runner, go to <strong>Workflow Templates</strong> and click <strong>Add Workflow Template</strong>. Paste this repository's URL into the <strong>Github Link</strong> field, then click <strong>Add Template</strong>:</p>
+    <pre><code>https://github.com/wildlife-dynamics/wwf-traffic.git</code></pre>
+    <p>Once added, it appears in the <strong>Workflow Templates</strong> list as <strong>wwf-traffic</strong>. Click it to open the workflow configuration form.</p>
+
+    <h2 id="configure">2. Configure the Workflow</h2>
+
+    <h3 id="workflow-details">Workflow Details and Time Range</h3>
+    <table>
+      <thead><tr><th>Field</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Workflow Name</td><td>A short name to identify this run (required)</td></tr>
+        <tr><td>Workflow Description</td><td>Optional notes to differentiate this run from others</td></tr>
+      </tbody>
+    </table>
+    <h4>Time range</h4>
+    <table>
+      <thead><tr><th>Field</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Timezone</td><td>Select the local timezone (e.g. <code>Africa/Nairobi UTC+03:00</code>)</td></tr>
+        <tr><td>Since</td><td>Start date and time &mdash; incidents from this point are included</td></tr>
+        <tr><td>Until</td><td>End date and time of the analysis window</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="groupers">Grouping Strategy</h3>
+    <p>Choose how the dashboard should be split into separate views:</p>
+    <table>
+      <thead><tr><th>Option</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Species</td><td>One dashboard view per mapped species group (e.g. Elephant, Hippo, Gorilla)</td></tr>
+        <tr><td>Country</td><td>One dashboard view per country of incident</td></tr>
+        <tr><td><em>(left blank)</em></td><td>All data appears in a single combined view (default)</td></tr>
+      </tbody>
+    </table>
+    <p>Only these two grouping fields are available &mdash; the underlying grouper type also supports temporal and spatial grouping, but both are disabled for this workflow.</p>
+
+    <h3 id="basemap">Basemap Layers</h3>
+    <p>Two stacked ArcGIS tile layers form the background of both maps. Pre-filled with sensible defaults, but the URL, opacity, and max zoom of each layer are editable.</p>
+    <table>
+      <thead><tr><th>Layer</th><th>Default Opacity</th><th>Max Zoom</th></tr></thead>
+      <tbody>
+        <tr><td>ESRI World Topographic Map</td><td><code>1.0</code></td><td><code>20</code></td></tr>
+        <tr><td>ESRI World Imagery</td><td><code>0.5</code></td><td><code>20</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="upload-file">Load Traffic CSV Files</h3>
+    <p>Upload the CSV file(s) containing your trafficking incident reports &mdash; see <a href="#requirements">Requirements</a> above for the three files needed. All files are merged on the <code>Report ID</code> column, so every file must include it.</p>
+
+    <h3 id="color-palette">Select Color Palette</h3>
+    <p>Choose a colour palette used to colour incidents by category and by species on the maps and charts. Pick a named Matplotlib colormap (defaults to <code>tab10</code>) or define a custom list of hex colours.</p>
+
+    <h2 id="run">3. Run the Workflow</h2>
+    <p>Once submitted, the runner will:</p>
+    <ol>
+      <li>Merge the uploaded CSV files on <code>Report ID</code>, then retain and rename the relevant columns to a standard schema.</li>
+      <li>For records with more than one trade-route location (Origin/Transit/Destination), retain a single representative row per report, species, and commodity.</li>
+      <li>Convert numeric fields (count, weight, arrest/charge/fine/imprisonment counts, latitude, longitude) from text to numeric values, then convert the records to a point GeoDataFrame.</li>
+      <li>Download the GVL 30km buffer boundary from Dropbox and reproject it to <code>EPSG:4326</code>.</li>
+      <li>Spatially join incidents against the GVL boundary (keeping only incidents that fall within it), then additionally restrict to incidents where <code>Country of Incident</code> is Rwanda, Uganda, or Congo, Democratic Republic of The.</li>
+      <li>Map scientific names to simplified species groups (e.g. Elephantidae/Loxodonta &rarr; Elephant, Manidae &rarr; Pangolin) and map raw incident categories to short labels (Seizure, Poaching, Smuggling, Human-Wildlife Conflict, Enforcement).</li>
+      <li>Add a temporal index and decompose the incident date into year and month; split the dataset into groups per the configured grouping strategy.</li>
+      <li>Aggregate incidents per year (overall, by species), sum arrests and imprisonments per year, and compute an overall conviction rate (total imprisoned / total arrested, as a percent).</li>
+      <li>Filter to ivory-related commodities (Ivory Pieces - Raw, Ivory - Worked, Tusk) and sum seizure weight per year.</li>
+      <li>Render the incidents-by-species and incidents-by-category time-series bar charts.</li>
+      <li>Build the GVL boundary layer plus incident and species scatterplot layers, compute a map zoom/extent from the data, and render the Incidents Map and Species Map.</li>
+      <li>Render the filterable summary table (date, category, role, species) and persist the full processed dataset as CSV.</li>
+      <li>Assemble all summary stat widgets, maps, charts, and the table into the final dashboard, merging per-group views where applicable.</li>
+      <li>Save all outputs to the directory specified by <code>ECOSCOPE_WORKFLOWS_RESULTS</code>.</li>
+    </ol>
+
+    <h3 id="output-files">Output Files</h3>
+    <p>All outputs are written to <code>$ECOSCOPE_WORKFLOWS_RESULTS/</code>:</p>
+    <table>
+      <thead><tr><th>File / suffix</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>..._incidents_by_species.html</code></td><td>Time-series bar chart of incidents per year, by species</td></tr>
+        <tr><td><code>..._incidents_by_category.html</code></td><td>Time-series bar chart of incidents per year, by incident category</td></tr>
+        <tr><td><code>..._incidents_by_species.html</code></td><td>Interactive <strong>Species Map</strong> coloured by species group</td></tr>
+        <tr><td><code>..._incidents_by_category.html</code></td><td>Interactive <strong>Incidents Map</strong> coloured by incident category</td></tr>
+        <tr><td><code>..._summary_table_of_incidents.html</code></td><td>Filterable/sortable summary table of individual incidents</td></tr>
+        <tr><td><code>&lt;group&gt;.csv</code></td><td>Full processed incident dataset for that group (all mapped/renamed columns)</td></tr>
+      </tbody>
+    </table>
+    <p>The two charts and the two maps are persisted in pairs that share the exact same filename suffix (<code>incidents_by_species</code> and <code>incidents_by_category</code>, respectively) &mdash; this is a naming quirk in the current workflow, not a collision on disk, since each file is additionally prefixed with a content hash. Distinguish them by opening the file or by widget title on the dashboard rather than by suffix alone.</p>
+    <p>A per-year conviction rate is also computed internally but its result is never persisted or wired into the dashboard &mdash; the <strong>Conviction Rate</strong> widget is instead computed separately as a single all-time ratio (total imprisoned &divide; total arrested).</p>
+
+    <p>Something not working as expected? See <a href="troubleshooting.html">Troubleshooting</a>. For a deeper look at the pipeline internals, see the <a href="technical-guide.html">Technical Guide</a>.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>WWF Traffic Workflow &middot; <a href="https://github.com/wildlife-dynamics/wwf-traffic">wildlife-dynamics/wwf-traffic</a> on GitHub</p>
+  </footer>
+</body>
+</html>

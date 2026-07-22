@@ -25,6 +25,7 @@ from ecoscope.platform.tasks.filter import set_time_range as set_time_range
 from ecoscope.platform.tasks.groupby import groupbykey as groupbykey
 from ecoscope.platform.tasks.groupby import set_groupers as set_groupers
 from ecoscope.platform.tasks.groupby import split_groups as split_groups
+from ecoscope.platform.tasks.io import persist_df as persist_df
 from ecoscope.platform.tasks.io import persist_text as persist_text
 from ecoscope.platform.tasks.results import (
     create_map_widget_single_view as create_map_widget_single_view,
@@ -1072,7 +1073,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 "get_fill_color": None,
                 "get_line_color": [0, 0, 0],
                 "opacity": 0.45,
-                "get_line_width": 1.55,
+                "get_line_width": 1.25,
                 "get_elevation": 0,
                 "get_point_radius": 1,
                 "line_width_units": "pixels",
@@ -1082,7 +1083,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             },
             geodataframe=reproject_gvl,
             legend={
-                "values": [{"label": "GVL Overlay 30kms", "color": "#000000"}],
+                "values": [{"label": "GVL Boundary (30km buffer)", "color": "#000000"}],
                 "title": "Boundaries",
             },
             **(params.get("create_gvl_boundary") or {}),
@@ -1389,6 +1390,34 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .mapvalues(argnames=["df"], argvalues=split_events_by_group)
     )
 
+    rename_summary_table = (
+        task(map_columns)
+        .validate()
+        .set_task_instance_id("rename_summary_table")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            raise_if_not_found=False,
+            drop_columns=[],
+            retain_columns=[],
+            rename_columns={
+                "date_of_incident": "Date",
+                "incident_category": "Incident Category",
+                "role": "Role",
+                "common_group": "Species",
+            },
+            **(params.get("rename_summary_table") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=subset_traffic_columns)
+    )
+
     filtered_table_html = (
         task(draw_table)
         .validate()
@@ -1413,7 +1442,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             widget_id="Summary table of incidents",
             **(params.get("filtered_table_html") or {}),
         )
-        .mapvalues(argnames=["dataframe"], argvalues=subset_traffic_columns)
+        .mapvalues(argnames=["dataframe"], argvalues=rename_summary_table)
     )
 
     filtered_table_html_url = (
@@ -1435,6 +1464,28 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             **(params.get("filtered_table_html_url") or {}),
         )
         .mapvalues(argnames=["text"], argvalues=filtered_table_html)
+    )
+
+    persist_csv = (
+        task(persist_df)
+        .validate()
+        .set_task_instance_id("persist_csv")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            filetype="csv",
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            **(params.get("persist_csv") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=split_events_by_group)
     )
 
     widget_incidents_map = (
@@ -1790,8 +1841,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            title="Most Frequently Trafficked Flagship Species",
-            **(params.get("widget_top_species") or {}),
+            title="Top Trafficked Species", **(params.get("widget_top_species") or {})
         )
         .map(argnames=["view", "data"], argvalues=top_species_label)
     )

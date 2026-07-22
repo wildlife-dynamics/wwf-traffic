@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Troubleshooting — WWF Traffic Workflow</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="brand" href="index.html">WWF Traffic</a>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="user-guide.html">User Guide</a>
+        <a href="technical-guide.html">Technical Guide</a>
+        <a href="troubleshooting.html" class="active">Troubleshooting</a>
+        <a href="https://github.com/wildlife-dynamics/wwf-traffic">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Troubleshooting</h1>
+    <p class="lede">Common issues encountered while configuring, running, or contributing to the WWF Traffic Workflow, and how to resolve them. If your issue isn't listed here, open an issue on <a href="https://github.com/wildlife-dynamics/wwf-traffic/issues">GitHub</a>.</p>
+
+    <h2>Uploading &amp; Merging CSV Files</h2>
+
+    <div class="error-block">
+      <p class="symptom"><code>KeyError</code> or column-not-found error immediately after upload</p>
+      <p><code>map_columns</code> runs with <code>raise_if_not_found: true</code>, so the run fails immediately if any of the 23 expected columns (see the <a href="user-guide.html#requirements">Requirements</a> list) is missing from the merged data. Confirm all three files were uploaded and that none of them is missing a column purely because of an export-format difference (e.g. a renamed header).</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Category of Incident, Country of Incident, or Date of Incident has unexpected/wrong values</p>
+      <p>These three columns exist in more than one of the uploaded files. After the merge, only the <code>_x</code>-suffixed variant &mdash; the value from whichever file was uploaded <em>first</em> &mdash; is kept. If you upload the files in a different order, you may get a different file's values for these three columns.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Merge produces far fewer (or far more) rows than expected</p>
+      <p><code>load_and_merge_csvs</code> merges sequentially on <code>Report ID</code>. If <code>Report ID</code> values don't match exactly across files (extra whitespace, different casing, leading zeros dropped by a spreadsheet tool) rows will fail to match and effectively disappear from the merged result.</p>
+    </div>
+
+    <h2>GVL Filtering</h2>
+
+    <div class="error-block">
+      <p class="symptom">An incident I expected to see is missing from every output</p>
+      <p>Two independent filters must both pass: (1) the incident's point geometry must fall <strong>within</strong> the GVL 30 km buffer polygon, and (2) its <code>country_of_incident</code> value must be exactly one of <strong>Rwanda</strong>, <strong>Uganda</strong>, or <strong>Congo, Democratic Republic of The</strong>. An incident can be geometrically inside the buffer and still be dropped if its country text doesn't match one of these three strings exactly (e.g. &ldquo;DRC&rdquo; or &ldquo;Democratic Republic of Congo&rdquo; would not match).</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">No incidents appear on either map even though the summary table has rows</p>
+      <p>Check <code>Latitude</code>/<code>Longitude</code> in the trade-route/location file &mdash; if these are missing, non-numeric, or use a different column name than expected, <code>df_to_point_gdf</code> cannot build point geometry and the spatial join against the GVL boundary will drop the record before it reaches the maps.</p>
+    </div>
+
+    <h2>Species &amp; Category Labels</h2>
+
+    <div class="error-block">
+      <p class="symptom">A species or incident category shows its raw/original text instead of a simplified label</p>
+      <p>Both mappings use <code>keep_unmapped: true</code>, so a scientific name or incident-category string not covered by the mapping table (see the Technical Guide, &sect;3.6) passes through unchanged rather than being dropped or erroring. This is expected for taxa or categories outside the current mapping list.</p>
+    </div>
+
+    <h2>Reports &amp; Dashboard</h2>
+
+    <div class="error-block">
+      <p class="symptom">Two files share the same <code>incidents_by_species</code> (or <code>incidents_by_category</code>) suffix &mdash; which one is the map and which is the chart?</p>
+      <p>This is a known naming quirk: the Incidents Map is persisted with suffix <code>incidents_by_category</code> (matching the incidents-by-category bar chart's suffix), and the Species Map with suffix <code>incidents_by_species</code> (matching the incidents-by-species bar chart's suffix). Each file is additionally prefixed with a content hash, so nothing is overwritten &mdash; but you'll need to open the file or check the dashboard widget title to tell map and chart apart.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Conviction Rate on the dashboard doesn't match a per-year rate I calculated manually from the CSV</p>
+      <p>The dashboard's <strong>Conviction Rate</strong> widget is an <em>all-time</em> ratio (total imprisoned &divide; total arrested across the whole time range), not a per-year figure. A separate per-year conviction rate is computed internally (<code>add_conviction_rate</code>) but is never persisted or displayed &mdash; this is dead code in the current <code>spec.yaml</code>.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">No outputs written / can't find results</p>
+      <p>All outputs are written to the directory specified by the <code>ECOSCOPE_WORKFLOWS_RESULTS</code> environment variable. Confirm it's set and points to a directory the workflow process can write to.</p>
+    </div>
+
+    <h2>Contributing &amp; CI</h2>
+    <p>These apply if you're modifying the workflow itself (<code>spec.yaml</code> or the generated <code>ecoscope-workflows-wwf-traffic-workflow/</code> directory) and opening a pull request.</p>
+
+    <div class="error-block">
+      <p class="symptom"><code>test-cases.yaml not found</code></p>
+      <p>This repository currently has <strong>no <code>test-cases.yaml</code> file</strong>, and CI's test-case validation step requires one with at least one entry. Add a <code>test-cases.yaml</code> with a <code>params</code> block (following the format used in sibling workflows) before CI will pass.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom"><code>Generated files differ from committed files in ecoscope-workflows-wwf-traffic-workflow</code></p>
+      <p>The generated workflow directory is out of sync with <code>spec.yaml</code>. Run the recompile script locally and commit the result:</p>
+      <pre><code>pixi run --manifest-path pixi.toml --locked bash -c "./dev/recompile.sh --update"</code></pre>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom"><code>Found wildcard version (*) in requirements</code> or <code>Found local file channel (file://) in requirements</code></p>
+      <p>In <code>spec.yaml</code>, every dependency under <code>requirements</code> must pin an exact version (or version range) and use a remote conda channel &mdash; wildcard versions and local <code>file://</code> channels are only valid for local development, not for CI using published packages.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom"><code>VERSION.yaml (...) must be greater than main branch (...)</code></p>
+      <p>Bump <code>MAJ</code>/<code>MIN</code>/<code>PATCH</code> in <code>ecoscope-workflows-wwf-traffic-workflow/VERSION.yaml</code> so it's strictly greater than the version on <code>main</code> before opening or updating a PR.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Workflow tests fail in CI but pass locally (or vice versa)</p>
+      <p><code>test.yml</code> runs test cases against all of <code>ubuntu-latest</code>, <code>macos-latest</code>, and <code>windows-latest</code>. Since this workflow has no EarthRanger dependency, a CI-only failure is more likely to come from the GVL boundary Dropbox download being unreachable, or from OS-specific handling of uploaded CSV file paths.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>WWF Traffic Workflow &middot; <a href="https://github.com/wildlife-dynamics/wwf-traffic">wildlife-dynamics/wwf-traffic</a> on GitHub</p>
+  </footer>
+</body>
+</html>
