@@ -34,9 +34,6 @@ from ecoscope.platform.tasks.results import (
     create_text_widget_single_view as create_text_widget_single_view,
 )
 from ecoscope.platform.tasks.results import draw_table as draw_table
-from ecoscope.platform.tasks.results import (
-    draw_time_series_bar_chart as draw_time_series_bar_chart,
-)
 from ecoscope.platform.tasks.results import gather_dashboard as gather_dashboard
 from ecoscope.platform.tasks.results import merge_widget_views as merge_widget_views
 from ecoscope.platform.tasks.skip import (
@@ -98,8 +95,14 @@ from ecoscope_workflows_ext_ste.tasks.transformation import (
 from ecoscope_workflows_ext_ste.tasks.transformation import (
     subset_columns as subset_columns,
 )
+from ecoscope_workflows_ext_wwf_virunga.tasks.extra import (
+    merge_traffic_xlsx as merge_traffic_xlsx,
+)
 from ecoscope_workflows_ext_wwf_virunga.tasks.io import (
     load_and_merge_csvs as load_and_merge_csvs,
+)
+from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
+    draw_bar_chart as draw_bar_chart_1,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.results import (
     create_period_comparison_widget as create_period_comparison_widget,
@@ -628,6 +631,69 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
+    load_extra_data = (
+        task(load_df)
+        .validate()
+        .set_task_instance_id("load_extra_data")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            layer=None, deserialize_json=False, **(params.get("load_extra_data") or {})
+        )
+        .call()
+    )
+
+    merge_external_traffic = (
+        task(merge_traffic_xlsx)
+        .validate()
+        .set_task_instance_id("merge_external_traffic")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            traffic_df=load_extra_data,
+            custom_df=decompose_dai_datetime,
+            **(params.get("merge_external_traffic") or {}),
+        )
+        .call()
+    )
+
+    merged_df_gdf = (
+        task(df_to_point_gdf)
+        .validate()
+        .set_task_instance_id("merged_df_gdf")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=merge_external_traffic,
+            latitude_column="latitude",
+            longitude_column="longitude",
+            crs="EPSG:4326",
+            **(params.get("merged_df_gdf") or {}),
+        )
+        .call()
+    )
+
     incident_species_colormap = (
         task(set_color_palette)
         .validate()
@@ -659,8 +725,8 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            df=decompose_dai_datetime,
-            input_column_name="category_of_incident",
+            df=merged_df_gdf,
+            input_column_name="domain",
             color_palette=incident_species_colormap,
             output_column_name="incident_colors",
             color_format="rgba_tuple",
@@ -685,7 +751,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             df=cmap_incidents,
-            input_column_name="common_group",
+            input_column_name="category",
             color_palette=incident_species_colormap,
             output_column_name="species_colors",
             color_format="rgba_tuple",
@@ -757,7 +823,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            group_col=["incident_year", "common_group"],
+            group_col=["incident_year", "category"],
             agg_col="report_id",
             agg_func="count",
             agg_col_name="no_of_incidents",
@@ -785,9 +851,9 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             group_col=["incident_year"],
-            agg_col="no_of_people_arrested",
+            agg_col="people_arrested",
             agg_func="sum",
-            agg_col_name="no_of_people_arrested",
+            agg_col_name="people_arrested",
             add_percent=False,
             pct_col_name=None,
             decimals=1,
@@ -812,9 +878,9 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             group_col=["incident_year"],
-            agg_col="no_of_people_imprisoned",
+            agg_col="people_imprisoned",
             agg_func="sum",
-            agg_col_name="no_of_people_imprisoned",
+            agg_col_name="people_imprisoned",
             add_percent=False,
             pct_col_name=None,
             decimals=1,
@@ -884,8 +950,8 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            numerator_col="no_of_people_imprisoned",
-            denominator_col="no_of_people_arrested",
+            numerator_col="people_imprisoned",
+            denominator_col="people_arrested",
             ratio_col_name="conviction_rate",
             as_percent=True,
             fill_invalid=0.0,
@@ -931,7 +997,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             group_col=["incident_year"],
-            agg_col="weight",
+            agg_col="weight_kg",
             agg_func="sum",
             agg_col_name="total_seizure_of_ivory",
             add_percent=False,
@@ -944,7 +1010,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     ts_species_chart = (
-        task(draw_time_series_bar_chart)
+        task(draw_bar_chart_1)
         .validate()
         .set_task_instance_id("ts_species_chart")
         .handle_errors()
@@ -957,14 +1023,24 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            x_axis="date_of_incident",
+            category="incident_year",
+            mode="stacked",
             y_axis="report_id",
-            category="common_group",
+            stack_column="domain",
             agg_function="count",
-            time_interval="year",
-            color_column="species_colors",
+            layout_style={
+                "xaxis": {"title": "Year"},
+                "yaxis": {"title": "Number of Incidents"},
+                "legend_title": "Incidents",
+            },
+            stack_order=None,
+            ascending=True,
+            color_column="incident_colors",
             plot_style=None,
-            layout_style=None,
+            bar_chart_configs=None,
+            overlay_opacity=0.65,
+            category_order=None,
+            widget_id=None,
             **(params.get("ts_species_chart") or {}),
         )
         .mapvalues(argnames=["dataframe"], argvalues=split_events_by_group)
@@ -992,7 +1068,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     ts_category_chart = (
-        task(draw_time_series_bar_chart)
+        task(draw_bar_chart_1)
         .validate()
         .set_task_instance_id("ts_category_chart")
         .handle_errors()
@@ -1005,14 +1081,24 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            x_axis="date_of_incident",
+            category="incident_year",
+            mode="stacked",
             y_axis="report_id",
-            category="incident_category",
+            stack_column="category",
             agg_function="count",
-            time_interval="year",
+            layout_style={
+                "xaxis": {"title": "Year"},
+                "yaxis": {"title": "Number of Incidents"},
+                "legend_title": "Category",
+            },
+            stack_order=None,
+            ascending=True,
             color_column="species_colors",
             plot_style=None,
-            layout_style=None,
+            bar_chart_configs=None,
+            overlay_opacity=0.65,
+            category_order=None,
+            widget_id=None,
             **(params.get("ts_category_chart") or {}),
         )
         .mapvalues(argnames=["dataframe"], argvalues=split_events_by_group)
@@ -1103,7 +1189,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             },
             legend={
                 "title": "Incidents",
-                "label_column": "incident_category",
+                "label_column": "domain",
                 "color_column": "incident_colors",
                 "sort": "ascending",
             },
@@ -1136,7 +1222,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             },
             legend={
                 "title": "Incidents",
-                "label_column": "common_group",
+                "label_column": "category",
                 "color_column": "species_colors",
                 "sort": "ascending",
             },
@@ -1371,7 +1457,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            columns=["date_of_incident", "incident_category", "role", "common_group"],
+            columns=["incident_year", "category", "role"],
             exclude=None,
             strict=False,
             **(params.get("subset_traffic_columns") or {}),
@@ -1397,10 +1483,9 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             drop_columns=[],
             retain_columns=[],
             rename_columns={
-                "date_of_incident": "Date",
-                "incident_category": "Incident Category",
+                "incident_year": "Year",
+                "category": "Species",
                 "role": "Role",
-                "common_group": "Species",
             },
             **(params.get("rename_summary_table") or {}),
         )
@@ -1562,7 +1647,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            title="Incidents by Species Over Time",
+            title="Incidents by Categories Over Time",
             **(params.get("widget_incidents_species_chart") or {}),
         )
         .map(argnames=["view", "data"], argvalues=incidents_bar_html)
@@ -1601,7 +1686,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            title="Incidents by Category Over Time",
+            title="Incidents by Species Over Time",
             **(params.get("widget_incidents_category_chart") or {}),
         )
         .map(argnames=["view", "data"], argvalues=category_bar_html)
@@ -1743,6 +1828,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             value_col="no_of_incidents",
             decimal_places=0,
             current_period=None,
+            view=None,
             **(params.get("widget_incidents_yoy") or {}),
         )
         .map(argnames=["view", "df"], argvalues=incidents_per_year)
@@ -1782,7 +1868,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            group_col=["common_group"],
+            group_col=["category"],
             agg_col="report_id",
             agg_func="count",
             agg_col_name="no_of_incidents",
@@ -1809,7 +1895,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            category_col="common_group",
+            category_col="category",
             value_col="no_of_incidents",
             suffix=" incidents",
             **(params.get("top_species_label") or {}),
@@ -1869,8 +1955,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            column_name="no_of_people_arrested",
-            **(params.get("total_arrested_sum") or {}),
+            column_name="people_arrested", **(params.get("total_arrested_sum") or {})
         )
         .mapvalues(argnames=["df"], argvalues=total_arrested)
     )
@@ -1929,8 +2014,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            column_name="no_of_people_imprisoned",
-            **(params.get("total_convicted_sum") or {}),
+            column_name="people_imprisoned", **(params.get("total_convicted_sum") or {})
         )
         .mapvalues(argnames=["df"], argvalues=total_imprisoned)
     )

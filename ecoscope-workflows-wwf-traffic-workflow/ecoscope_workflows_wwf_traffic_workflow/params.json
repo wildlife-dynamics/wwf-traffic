@@ -315,6 +315,21 @@
       "type": "object",
       "title": "Load Traffic CSV files"
     },
+    "load_extra_data": {
+      "additionalProperties": false,
+      "properties": {
+        "file_path": {
+          "title": "File Path",
+          "type": "string",
+          "description": "Path to the file to load. Supported formats: .parquet, .geoparquet, .geojson, .json, .gpkg, .csv, .shp"
+        }
+      },
+      "required": [
+        "file_path"
+      ],
+      "type": "object",
+      "title": "Load Extra Data"
+    },
     "incident_species_colormap": {
       "additionalProperties": false,
       "properties": {
@@ -706,6 +721,7 @@
       "groupers",
       "configure_base_maps",
       "load_traffic_csvs",
+      "load_extra_data",
       "incident_species_colormap",
       "zoom_to_envelope"
     ]

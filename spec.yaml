@@ -13,7 +13,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-wwf-virunga
-    version: "0.0.0rc1.*"
+    version: "0.0.0rc2.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: pydeck
@@ -283,6 +283,39 @@ workflow:
       remove_source: false 
       column_prefix: incident 
   
+  - name: Load Extra Data
+    id: load_extra_data
+    task: load_df
+    partial:
+      #file_path: null # TODO: set path to extra data file
+      layer: null
+      deserialize_json: false
+
+  # - name: Persist cleaned data as csv 
+  #   id: persist_clean_data 
+  #   task: persist_df 
+  #   partial: 
+  #     filetype: csv 
+  #     root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+  #     filename: cleaned_data 
+  #     df: ${{ workflow.cmap_species.return }}
+
+  - name: Merge external with traffic data
+    id: merge_external_traffic
+    task: merge_traffic_xlsx
+    partial:
+      traffic_df:  ${{ workflow.load_extra_data.return }}
+      custom_df: ${{ workflow.decompose_dai_datetime.return }}
+
+  - name: Convert dataframe to geodataframe 
+    id: merged_df_gdf 
+    task: df_to_point_gdf 
+    partial: 
+      df: ${{ workflow.merge_external_traffic.return }}
+      latitude_column: "latitude"
+      longitude_column: "longitude"
+      crs: "EPSG:4326"
+
   - name: Select colormap to use for species and incidents 
     id: incident_species_colormap 
     task: set_color_palette 
@@ -291,8 +324,8 @@ workflow:
     id: cmap_incidents 
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.apply_cmap 
     partial: 
-      df: ${{ workflow.decompose_dai_datetime.return }}
-      input_column_name: "category_of_incident"
+      df: ${{ workflow.merged_df_gdf.return }}
+      input_column_name: "domain"
       color_palette: ${{ workflow.incident_species_colormap.return }}
       output_column_name: "incident_colors"
       color_format: "rgba_tuple" 
@@ -303,7 +336,7 @@ workflow:
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.apply_cmap 
     partial: 
       df: ${{ workflow.cmap_incidents.return }}
-      input_column_name: "common_group"
+      input_column_name: "category"
       color_palette: ${{ workflow.incident_species_colormap.return }}
       output_column_name: "species_colors"
       color_format: "rgba_tuple" 
@@ -336,7 +369,7 @@ workflow:
     id: incidents_species_year 
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
     partial: 
-      group_col: ["incident_year","common_group"]
+      group_col: ["incident_year","category"]
       agg_col: "report_id"
       agg_func: "count" 
       agg_col_name: "no_of_incidents"
@@ -353,9 +386,9 @@ workflow:
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
     partial: 
       group_col: ["incident_year"]
-      agg_col: "no_of_people_arrested"
+      agg_col: "people_arrested"
       agg_func: "sum" 
-      agg_col_name: "no_of_people_arrested"
+      agg_col_name: "people_arrested"
       add_percent: false 
       pct_col_name: null 
       decimals: 1
@@ -369,9 +402,9 @@ workflow:
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
     partial: 
       group_col: ["incident_year"]
-      agg_col: "no_of_people_imprisoned"
+      agg_col: "people_imprisoned"
       agg_func: "sum" 
-      agg_col_name: "no_of_people_imprisoned"
+      agg_col_name: "people_imprisoned"
       add_percent: false 
       pct_col_name: null 
       decimals: 1
@@ -414,8 +447,8 @@ workflow:
     id: add_conviction_rate 
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.add_ratio_column 
     partial: 
-      numerator_col: "no_of_people_imprisoned"
-      denominator_col: "no_of_people_arrested"
+      numerator_col: "people_imprisoned"
+      denominator_col: "people_arrested"
       ratio_col_name: "conviction_rate"
       as_percent: true 
       fill_invalid: 0.0
@@ -439,7 +472,7 @@ workflow:
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by 
     partial: 
       group_col: ["incident_year"]
-      agg_col: "weight"
+      agg_col: "weight_kg"
       agg_func: "sum" 
       agg_col_name: "total_seizure_of_ivory"
       add_percent: false 
@@ -450,18 +483,29 @@ workflow:
       argnames: df 
       argvalues: ${{ workflow.filter_ivory.return }}
 
-  - name: Draw time series bar chart incidents by species 
+  - name: Draw stacked bar chart incidents by domain
     id: ts_species_chart
-    task: draw_time_series_bar_chart 
-    partial:  
-      x_axis: "date_of_incident"
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_bar_chart
+    partial:
+      category: "incident_year"
+      mode: "stacked"
       y_axis: "report_id"
-      category: "common_group"
+      stack_column: "domain"
       agg_function: "count"
-      time_interval: "year"
-      color_column: "species_colors"
-      plot_style: null
-      layout_style: null 
+      layout_style:
+        xaxis:
+          title: "Year"
+        yaxis:
+          title: "Number of Incidents"
+        legend_title: "Incidents"
+      stack_order: null
+      ascending: true 
+      color_column: "incident_colors"
+      plot_style: null 
+      bar_chart_configs: null 
+      overlay_opacity: 0.65
+      category_order: null 
+      widget_id: null
     mapvalues:
       argnames: dataframe
       argvalues: ${{ workflow.split_events_by_group.return }}
@@ -476,18 +520,29 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.ts_species_chart.return }}
 
-  - name: Draw time series bar chart incidents by category
+  - name: Draw stacked bar chart incidents by species
     id: ts_category_chart
-    task: draw_time_series_bar_chart 
-    partial:  
-      x_axis: "date_of_incident"
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_bar_chart
+    partial:
+      category: "incident_year"
+      mode: "stacked"
       y_axis: "report_id"
-      category: "incident_category"
+      stack_column: "category"
       agg_function: "count"
-      time_interval: "year"
+      layout_style:
+        xaxis:
+          title: "Year"
+        yaxis:
+          title: "Number of Incidents"
+        legend_title: "Category"
+      stack_order: null
+      ascending: true 
       color_column: "species_colors"
       plot_style: null 
-      layout_style: null 
+      bar_chart_configs: null 
+      overlay_opacity: 0.65
+      category_order: null 
+      widget_id: null
     mapvalues:
       argnames: dataframe
       argvalues: ${{ workflow.split_events_by_group.return }}
@@ -541,7 +596,7 @@ workflow:
         stroked: true
       legend:
         title: Incidents
-        label_column: "incident_category"
+        label_column: "domain"
         color_column: "incident_colors"
         sort: ascending
       data_url: null
@@ -561,7 +616,7 @@ workflow:
         stroked: true
       legend:
         title: Incidents
-        label_column: "common_group"
+        label_column: "category"
         color_column: "species_colors"
         sort: ascending
       data_url: null
@@ -694,10 +749,9 @@ workflow:
     task: subset_columns
     partial: 
       columns: 
-        - "date_of_incident"
-        - "incident_category"
+        - "incident_year"
+        - "category"
         - "role"
-        - "common_group"
       exclude: null 
       strict: false 
     mapvalues: 
@@ -712,10 +766,9 @@ workflow:
       drop_columns: []
       retain_columns: [] 
       rename_columns: 
-        date_of_incident: Date
-        incident_category: "Incident Category"
+        incident_year: Year
+        category: "Species"
         role: Role 
-        common_group: Species
     mapvalues:
       argnames: df 
       argvalues: ${{ workflow.subset_traffic_columns.return }}
@@ -803,7 +856,7 @@ workflow:
       conditions:
         - any_is_empty_df
     partial:
-      title: "Incidents by Species Over Time"
+      title: "Incidents by Categories Over Time"
     map:
       argnames: [view, data]
       argvalues: ${{ workflow.incidents_bar_html.return }}
@@ -821,7 +874,7 @@ workflow:
       conditions:
         - any_is_empty_df
     partial:
-      title: "Incidents by Category Over Time"
+      title: "Incidents by Species Over Time"
     map:
       argnames: [view, data]
       argvalues: ${{ workflow.category_bar_html.return }}
@@ -894,6 +947,7 @@ workflow:
       value_col: "no_of_incidents"
       decimal_places: 0
       current_period: null
+      view: null 
     map:
       argnames: [view, df]
       argvalues: ${{ workflow.incidents_per_year.return }}
@@ -908,7 +962,7 @@ workflow:
     id: species_totals
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by
     partial:
-      group_col: ["common_group"]
+      group_col: ["category"]
       agg_col: "report_id"
       agg_func: "count"
       agg_col_name: "no_of_incidents"
@@ -924,7 +978,7 @@ workflow:
     id: top_species_label
     task: ecoscope_workflows_ext_wwf_virunga.tasks.results.get_top_category
     partial:
-      category_col: "common_group"
+      category_col: "category"
       value_col: "no_of_incidents"
       suffix: " incidents"
     mapvalues:
@@ -953,7 +1007,7 @@ workflow:
     id: total_arrested_sum
     task: dataframe_column_sum
     partial:
-      column_name: "no_of_people_arrested"
+      column_name: "people_arrested"
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.total_arrested.return }}
@@ -981,7 +1035,7 @@ workflow:
     id: total_convicted_sum
     task: dataframe_column_sum
     partial:
-      column_name: "no_of_people_imprisoned"
+      column_name: "people_imprisoned"
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.total_imprisoned.return }}
