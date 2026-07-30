@@ -20,6 +20,28 @@
       "description": "Add information that will help to differentiate this workflow from another.",
       "title": "Workflow Details"
     },
+    "connect_to_traffic": {
+      "additionalProperties": false,
+      "properties": {
+        "username": {
+          "default": "",
+          "title": "Username",
+          "type": "string",
+          "description": "Wildlife Trade Portal login email"
+        },
+        "password": {
+          "default": "",
+          "format": "password",
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true,
+          "description": "Wildlife Trade Portal login password"
+        }
+      },
+      "type": "object",
+      "required": [],
+      "title": "Connect to traffic portal"
+    },
     "time_range": {
       "additionalProperties": false,
       "properties": {
@@ -297,23 +319,20 @@
       "required": [],
       "title": "Configure Basemaps"
     },
-    "load_traffic_csvs": {
+    "download_traffic_csvs": {
       "additionalProperties": false,
       "properties": {
-        "file_paths": {
-          "items": {
-            "type": "string"
-          },
-          "title": "File Paths",
-          "type": "array",
-          "description": "Paths to the CSV files to load and merge."
+        "reason": {
+          "default": "Research on incidents",
+          "title": "Reason",
+          "type": "string",
+          "description": "Justification text required by the portal's export form.",
+          "ecoscope:advanced": true
         }
       },
-      "required": [
-        "file_paths"
-      ],
+      "required": [],
       "type": "object",
-      "title": "Load Traffic CSV files"
+      "title": "Download Traffic Portal Incidents"
     },
     "load_extra_data": {
       "additionalProperties": false,
@@ -707,6 +726,12 @@
         "description"
       ]
     },
+    "connect_to_traffic": {
+      "ui:order": [
+        "username",
+        "password"
+      ]
+    },
     "time_range": {
       "ui:order": [
         "since",
@@ -717,10 +742,11 @@
     },
     "ui:order": [
       "workflow_details",
+      "connect_to_traffic",
       "time_range",
       "groupers",
       "configure_base_maps",
-      "load_traffic_csvs",
+      "download_traffic_csvs",
       "load_extra_data",
       "incident_species_colormap",
       "zoom_to_envelope"

@@ -17,8 +17,31 @@
         "name"
       ],
       "type": "object",
-      "description": "Add information that will help to differentiate this workflow from another.",
+      "description": "A name and description to help you tell this run apart from others later (for example when comparing different date ranges or filters). These are only used for your own reference and have no effect on the data retrieved.",
       "title": "Workflow Details"
+    },
+    "connect_to_traffic": {
+      "additionalProperties": false,
+      "properties": {
+        "username": {
+          "default": "",
+          "title": "Username",
+          "type": "string",
+          "description": "Wildlife Trade Portal login email"
+        },
+        "password": {
+          "default": "",
+          "format": "password",
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true,
+          "description": "Wildlife Trade Portal login password"
+        }
+      },
+      "type": "object",
+      "required": [],
+      "title": "Connect to traffic portal",
+      "description": "Connect to the TRAFFIC Wildlife Trade Portal. Use the same email and password you used when signing up on this platform: https://www.wildlifetradeportal.org/ "
     },
     "time_range": {
       "additionalProperties": false,
@@ -57,7 +80,7 @@
         "until"
       ],
       "type": "object",
-      "description": "Choose the period of time to analyze.",
+      "description": "The time range set here is used to retrieve incidents data from https://www.wildlifetradeportal.org/ only incidents recorded within this window will be included in the report.",
       "title": "Time Range"
     },
     "groupers": {
@@ -80,7 +103,8 @@
       },
       "type": "object",
       "required": [],
-      "title": "Configure Grouping Strategy"
+      "title": "Configure Grouping Strategy",
+      "description": "Choose how incidents should be split into separate maps, charts, and tables"
     },
     "configure_base_maps": {
       "additionalProperties": false,
@@ -289,25 +313,24 @@
       },
       "type": "object",
       "required": [],
-      "title": "Configure Basemaps"
+      "title": "Configure Basemaps",
+      "description": "The background map tile layers used when rendering the incident and species maps in this report. The defaults provide topographic and satellite imagery; only change these if you need a different base map source."
     },
-    "load_traffic_csvs": {
+    "download_traffic_csvs": {
       "additionalProperties": false,
       "properties": {
-        "file_paths": {
-          "items": {
-            "type": "string"
-          },
-          "title": "File Paths",
-          "type": "array",
-          "description": "Paths to the CSV files to load and merge."
+        "reason": {
+          "default": "Research on incidents",
+          "title": "Reason",
+          "type": "string",
+          "description": "Justification text required by the portal's export form.",
+          "ecoscope:advanced": true
         }
       },
-      "required": [
-        "file_paths"
-      ],
+      "required": [],
       "type": "object",
-      "title": "Load Traffic CSV files"
+      "title": "Download Traffic Portal Incidents",
+      "description": "Controls which incident export files are downloaded from https://www.wildlifetradeportal.org/ and the justification text required by the portal's own export form."
     },
     "load_extra_data": {
       "additionalProperties": false,
@@ -322,7 +345,8 @@
         "file_path"
       ],
       "type": "object",
-      "title": "Load Extra Data"
+      "title": "Load Extra Data",
+      "description": "Path to an additional local CSV file of incident records to merge with the data retrieved from the Wildlife Trade Portal"
     },
     "incident_species_colormap": {
       "additionalProperties": false,
@@ -345,7 +369,8 @@
       },
       "type": "object",
       "required": [],
-      "title": "Select colormap to use for species and incidents"
+      "title": "Select colormap to use for species and incidents",
+      "description": "The color palette used to visually distinguish species and incident categories across the charts and maps in this report."
     },
     "Map Zoom & Extent": {
       "type": "object",
@@ -466,11 +491,11 @@
           "type": "string",
           "oneOf": [
             {
-              "const": "common_group",
+              "const": "category",
               "title": "Species"
             },
             {
-              "const": "country_of_incident",
+              "const": "country",
               "title": "Country"
             }
           ]
@@ -718,6 +743,12 @@
         "description"
       ]
     },
+    "connect_to_traffic": {
+      "ui:order": [
+        "username",
+        "password"
+      ]
+    },
     "time_range": {
       "ui:order": [
         "since",
@@ -728,10 +759,11 @@
     },
     "ui:order": [
       "workflow_details",
+      "connect_to_traffic",
       "time_range",
       "groupers",
       "configure_base_maps",
-      "load_traffic_csvs",
+      "download_traffic_csvs",
       "load_extra_data",
       "incident_species_colormap",
       "Map Zoom & Extent"

@@ -22,19 +22,20 @@
 
   <main>
     <h1>Technical Guide</h1>
-    <p class="lede">A deeper look at how the WWF Traffic Workflow is built: the multi-file CSV merge pipeline, GVL spatial filtering, map and chart methodology, and metric calculations.</p>
+    <p class="lede">A deeper look at how the WWF Traffic Workflow is built: the portal login &amp; download automation, the multi-file CSV merge pipeline, GVL spatial filtering, map and chart methodology, and metric calculations.</p>
 
     <p>
       <a href="assets/wwf_traffic_technical_guide.pdf">Download the full Technical Guide (PDF)</a>
     </p>
-    <p>Unlike the EarthRanger-connected workflows in this fleet, WWF Traffic has no live data source &mdash; all input data is supplied as CSV uploads, and the only network dependency is a one-time Dropbox download of the GVL boundary file. This guide was written directly against the current <code>spec.yaml</code>.</p>
+    <p>Unlike the EarthRanger-connected workflows in this fleet, WWF Traffic has no EarthRanger data source &mdash; input data is downloaded directly from the TRAFFIC Wildlife Trade Portal via a browser-automated login/export flow, optionally merged with a local CSV, and the only other network dependency is a one-time Dropbox download of the GVL boundary file. This guide was written directly against the current <code>spec.yaml</code>.</p>
 
     <h2>Contents</h2>
     <ol>
       <li>Overview</li>
       <li>Dependencies &amp; Prerequisites
         <ol type="a">
-          <li>Input Data &mdash; Three Merged CSV Files</li>
+          <li>Traffic Portal Connection &amp; Download</li>
+          <li>Input Data &mdash; Three Merged CSV Exports</li>
           <li>Grouping Strategy</li>
           <li>GVL 30 km Buffer Boundary</li>
           <li>Base Map Tile Layers</li>
@@ -50,6 +51,7 @@
           <li>Country Restriction</li>
           <li>Species &amp; Category Mapping</li>
           <li>Temporal Index</li>
+          <li>Optional Local Data Merge</li>
         </ol>
       </li>
       <li>Static Map Layers

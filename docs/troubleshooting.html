@@ -24,21 +24,43 @@
     <h1>Troubleshooting</h1>
     <p class="lede">Common issues encountered while configuring, running, or contributing to the WWF Traffic Workflow, and how to resolve them. If your issue isn't listed here, open an issue on <a href="https://github.com/wildlife-dynamics/wwf-traffic/issues">GitHub</a>.</p>
 
-    <h2>Uploading &amp; Merging CSV Files</h2>
+    <h2>Connecting to the Traffic Portal</h2>
 
     <div class="error-block">
-      <p class="symptom"><code>KeyError</code> or column-not-found error immediately after upload</p>
-      <p><code>map_columns</code> runs with <code>raise_if_not_found: true</code>, so the run fails immediately if any of the 23 expected columns (see the <a href="user-guide.html#requirements">Requirements</a> list) is missing from the merged data. Confirm all three files were uploaded and that none of them is missing a column purely because of an export-format difference (e.g. a renamed header).</p>
+      <p class="symptom">Login appears to hang, or the portal just keeps reloading the login form</p>
+      <p><code>connect_to_traffic_portal_with_credentials</code> normalizes your email (trims leading/trailing whitespace) before submitting it, but a stray space accidentally pasted into the <strong>password</strong> field is <em>not</em> trimmed &mdash; a password could legitimately contain meaningful whitespace, so it's sent exactly as typed. A silently rejected login just resets back to the same empty login modal rather than showing an error, which reads as a hang. Re-check both fields for accidental leading/trailing spaces.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Download fails after ~3 attempts with a timeout error</p>
+      <p>Each download attempt logs in fresh, searches, and exports with a 60-second timeout per page action, retrying up to 3 times with an entirely new browser session before giving up (<code>download_traffic_incidents</code> / <code>TrafficPortalSession.download_incidents</code>). This is a browser-automation replay of the portal's own UI, so a slow page render or a temporarily unreachable portal can fail an attempt without your credentials or configuration being wrong. If it fails consistently, check that the portal itself is reachable and that your account isn't locked.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Need to diagnose exactly where the download flow failed</p>
+      <p>On failure, a screenshot (<code>error.png</code>) and the page's HTML (<code>error.html</code>) are written to a <code>debug/</code> subfolder under your results directory, along with numbered step screenshots (<code>01_loaded_home.png</code>, <code>02_opened_login_form.png</code>, etc.) from the attempt. These show exactly which step of the login/search/export flow the run reached before failing.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">First run is slow to start, or logs mention installing Chromium</p>
+      <p>The workflow uses Playwright to drive a real browser against the portal. The first time it runs in an environment, it installs the Playwright Chromium browser (up to a 300-second timeout) before attempting to log in &mdash; this is expected and only happens once per environment.</p>
+    </div>
+
+    <h2>Downloading &amp; Merging Traffic Portal Exports</h2>
+
+    <div class="error-block">
+      <p class="symptom"><code>KeyError</code> or column-not-found error after the download step</p>
+      <p><code>map_columns</code> runs with <code>raise_if_not_found: true</code>, so the run fails immediately if any of the 23 expected columns (see the <a href="user-guide.html#requirements">Requirements</a> list) is missing from the merged data. This most commonly means the <strong>Export Types</strong> field under <a href="user-guide.html#download">Download Traffic Portal Incidents</a> was changed from its default of all three export types &mdash; all three are required for the merge to have every expected column.</p>
     </div>
 
     <div class="error-block">
       <p class="symptom">Category of Incident, Country of Incident, or Date of Incident has unexpected/wrong values</p>
-      <p>These three columns exist in more than one of the uploaded files. After the merge, only the <code>_x</code>-suffixed variant &mdash; the value from whichever file was uploaded <em>first</em> &mdash; is kept. If you upload the files in a different order, you may get a different file's values for these three columns.</p>
+      <p>These three columns exist in more than one of the three downloaded exports. After the merge, only the <code>_x</code>-suffixed variant &mdash; the value from whichever export was downloaded <em>first</em> &mdash; is kept. This follows the order of the <strong>Export Types</strong> field (default: Incident Data Only, then Incident Summary + Species, then Incident Summary + Locations).</p>
     </div>
 
     <div class="error-block">
       <p class="symptom">Merge produces far fewer (or far more) rows than expected</p>
-      <p><code>load_and_merge_csvs</code> merges sequentially on <code>Report ID</code>. If <code>Report ID</code> values don't match exactly across files (extra whitespace, different casing, leading zeros dropped by a spreadsheet tool) rows will fail to match and effectively disappear from the merged result.</p>
+      <p><code>load_and_merge_csvs</code> merges the downloaded exports sequentially on <code>Report ID</code>. If you also merge in an extra local CSV via <a href="user-guide.html#load-extra-data">Load Extra Data</a>, mismatched <code>Report ID</code> values between it and the portal data (extra whitespace, different casing, leading zeros dropped by a spreadsheet tool) will fail to match and effectively disappear from the merged result.</p>
     </div>
 
     <h2>GVL Filtering</h2>
@@ -50,7 +72,7 @@
 
     <div class="error-block">
       <p class="symptom">No incidents appear on either map even though the summary table has rows</p>
-      <p>Check <code>Latitude</code>/<code>Longitude</code> in the trade-route/location file &mdash; if these are missing, non-numeric, or use a different column name than expected, <code>df_to_point_gdf</code> cannot build point geometry and the spatial join against the GVL boundary will drop the record before it reaches the maps.</p>
+      <p>Check <code>Latitude</code>/<code>Longitude</code> in the trade-route/location export &mdash; if these are missing or non-numeric, <code>df_to_point_gdf</code> cannot build point geometry and the spatial join against the GVL boundary will drop the record before it reaches the maps.</p>
     </div>
 
     <h2>Species &amp; Category Labels</h2>
@@ -103,7 +125,7 @@
 
     <div class="error-block">
       <p class="symptom">Workflow tests fail in CI but pass locally (or vice versa)</p>
-      <p><code>test.yml</code> runs test cases against all of <code>ubuntu-latest</code>, <code>macos-latest</code>, and <code>windows-latest</code>. Since this workflow has no EarthRanger dependency, a CI-only failure is more likely to come from the GVL boundary Dropbox download being unreachable, or from OS-specific handling of uploaded CSV file paths.</p>
+      <p><code>test.yml</code> runs test cases against all of <code>ubuntu-latest</code>, <code>macos-latest</code>, and <code>windows-latest</code>. Since this workflow has no EarthRanger dependency, a CI-only failure is more likely to come from the GVL boundary Dropbox download being unreachable, from the Playwright Chromium install step, or from the Wildlife Trade Portal itself being temporarily unreachable from the CI runner.</p>
     </div>
   </main>
 

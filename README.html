@@ -33,7 +33,7 @@
 <body>
 
 <h1 id="wwf-traffic-workflow">WWF Traffic Workflow</h1>
-<p>This guide walks you through loading, configuring, and running the WWF Traffic Workflow, which processes user-uploaded wildlife trafficking incident reports, filters them to incidents within a 30km buffer of the Greater Virunga Landscape (GVL) boundary, and produces an interactive dashboard of trafficking trends by species, incident category, and country.</p>
+<p>This guide walks you through loading, configuring, and running the WWF Traffic Workflow, which connects directly to the TRAFFIC Wildlife Trade Portal to download wildlife trafficking incident reports for a configured time range, filters them to incidents within a 30km buffer of the Greater Virunga Landscape (GVL) boundary, and produces an interactive dashboard of trafficking trends by species, incident category, and country.</p>
 <hr />
 <h2 id="what-it-produces">What it produces</h2>
 <p>The workflow delivers, for each run:</p>
@@ -46,20 +46,17 @@
 <li>A <strong>Summary Table</strong> — filterable/sortable table of individual incidents (date, category, role, species)</li>
 <li>A <strong>per-group CSV export</strong> of the full processed incident dataset</li>
 </ul>
-<p>All widgets are grouped by whichever grouping strategy you configure (Species or Country of Incident, or one combined view if left blank) and assembled into a single dashboard.</p>
+<p>All widgets are grouped by whichever grouping strategy you configure (Species or Country, or one combined view if left blank) and assembled into a single dashboard.</p>
 <hr />
 <h2 id="requirements">Requirements</h2>
 <ul>
-<li><p><strong>Three CSV exports from the TRAFFIC dataset</strong>, uploaded together, all sharing a common <code>Report ID</code> column used to merge them. This workflow reads columns spread across multiple files — no single export contains everything it needs:</p>
-<ul>
-<li>An <strong>incident/case file</strong> — <code>Report ID</code>, <code>Category of Incident</code>, <code>Country of Incident</code>, <code>Date of Incident</code>, <code>Outcome</code>, <code>Number of People Arrested</code>, <code>Number of People Charged</code>, <code>Number of People Fined</code>, <code>Number of People Imprisoned</code></li>
-<li>A <strong>species/commodity file</strong> — <code>Report ID</code>, <code>Full Scientific Name</code>, <code>Item / Commodity Type</code>, <code>Count</code>, <code>Weight</code>, <code>Unit of Weight</code>, <code>Kingdom</code>, <code>Phylum</code>, <code>Class</code>, <code>Order</code>, <code>Family</code>, <code>Common Name</code></li>
-<li>A <strong>trade-route/location file</strong> — <code>Report ID</code>, <code>Role</code>, <code>Order in Trade Route</code>, <code>Country</code>, <code>Latitude</code>, <code>Longitude</code></li>
+<li><p><strong>A Wildlife Trade Portal account.</strong> The workflow logs in to <a href="https://www.wildlifetradeportal.org/">wildlifetradeportal.org</a> on your behalf using the same email and password you use to sign in there, and downloads the incidents recorded within your configured time range. No manual CSV export/upload is required.</p></li>
+<li><p><em>(Optional)</em> <strong>An additional local CSV file</strong> of incident records if you want to merge your own data with what's retrieved from the portal (see <a href="#load-extra-data">Load Extra Data</a>).</p></li>
 </ul>
 <blockquote>
-<p><code>Category of Incident</code>, <code>Country of Incident</code>, and <code>Date of Incident</code> appear in more than one of the three files. After merging, only the version from the first-loaded file is kept (internally suffixed <code>_x</code>) — make sure that file's values are the ones you want retained for those three columns.</p>
-</blockquote></li>
-</ul>
+<p>Behind the scenes, the workflow downloads three portal export types — an incident/case export, a species/commodity export, and a trade-route/location export — and merges them on a shared <code>Report ID</code> column. This happens automatically; you don't need to configure it unless you want to change which export types are downloaded (see <a href="#download-traffic-portal-incidents">Download Traffic Portal Incidents</a>).</p>
+<p><code>Category of Incident</code>, <code>Country of Incident</code>, and <code>Date of Incident</code> appear in more than one of the three portal exports. After merging, only the version from the first-downloaded export is kept (internally suffixed <code>_x</code>).</p>
+</blockquote>
 <blockquote>
 <p>The GVL 30km buffer boundary is downloaded automatically from Dropbox at runtime — no local copy is required.</p>
 </blockquote>
@@ -70,7 +67,8 @@
 <p>Once added, it appears in the <strong>Workflow Templates</strong> list as <strong>wwf-traffic</strong>. Click it to open the workflow configuration form.</p>
 <hr />
 <h2 id="2-configure-the-workflow">2. Configure the Workflow</h2>
-<h3 id="workflow-details-and-time-range">Workflow Details and Time Range</h3>
+<h3 id="workflow-details">Workflow Details</h3>
+<p>A name and description to help you tell this run apart from others later (for example when comparing different date ranges or filters). These are only used for your own reference and have no effect on the data retrieved.</p>
 <table>
 <thead>
 <tr class="header">
@@ -89,7 +87,31 @@
 </tr>
 </tbody>
 </table>
-<p><strong>Time range</strong></p>
+<h3 id="connect-to-traffic-portal">Connect to Traffic Portal</h3>
+<p>Connect to the TRAFFIC Wildlife Trade Portal. Use the same email and password you used when signing up on <a href="https://www.wildlifetradeportal.org/">wildlifetradeportal.org</a>.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Email</td>
+<td>Your Wildlife Trade Portal login email</td>
+</tr>
+<tr class="even">
+<td>Password</td>
+<td>Your Wildlife Trade Portal login password</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>The workflow drives a real browser session against the portal to log in and export data, the same way you would manually — nothing about your account is stored beyond this run.</p>
+</blockquote>
+<h3 id="time-range">Time Range</h3>
+<p>The time range set here is used to retrieve incidents data from the Wildlife Trade Portal — only incidents recorded within this window will be included in the report.</p>
 <table>
 <thead>
 <tr class="header">
@@ -113,7 +135,7 @@
 </tbody>
 </table>
 <h3 id="grouping-strategy">Grouping Strategy</h3>
-<p>Choose how the dashboard should be split into separate views:</p>
+<p>Choose how incidents should be split into separate maps, charts, and tables:</p>
 <table>
 <thead>
 <tr class="header">
@@ -138,7 +160,7 @@
 </table>
 <p>Only these two grouping fields are available — the underlying grouper type also supports temporal and spatial grouping, but both are disabled for this workflow.</p>
 <h3 id="basemap-layers">Basemap Layers</h3>
-<p>Two stacked ArcGIS tile layers form the background of both maps. Pre-filled with sensible defaults, but the URL, opacity, and max zoom of each layer are editable.</p>
+<p>The background map tile layers used when rendering the incident and species maps in this report. The defaults provide topographic and satellite imagery; only change these if you need a different base map source.</p>
 <table>
 <thead>
 <tr class="header">
@@ -160,15 +182,36 @@
 </tr>
 </tbody>
 </table>
-<h3 id="load-traffic-csv-files">Load Traffic CSV Files</h3>
-<p>Upload the CSV file(s) containing your trafficking incident reports — see <a href="#requirements">Requirements</a> for the three files needed. All files are merged on the <code>Report ID</code> column, so every file must include it.</p>
+<h3 id="download-traffic-portal-incidents">Download Traffic Portal Incidents</h3>
+<p>Controls which incident export files are downloaded from the Wildlife Trade Portal and the justification text required by the portal's own export form. These are advanced fields — the defaults work for a standard run:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Export Types</td>
+<td>Which portal export files to download. Defaults to all three: <strong>Incident Data Only</strong>, <strong>Incident Summary + Species</strong>, <strong>Incident Summary + Locations</strong> — all three are needed for the merge described in <a href="#requirements">Requirements</a>, so leave this at the default unless you have a specific reason to change it.</td>
+</tr>
+<tr class="even">
+<td>Reason</td>
+<td>Justification text required by the portal's own export form (defaults to <code>Research on incidents</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="load-extra-data">Load Extra Data</h3>
+<p><em>(Optional)</em> Path to an additional local CSV file of incident records to merge with the data retrieved from the Wildlife Trade Portal. Leave blank if you only want data from the portal.</p>
 <h3 id="select-color-palette">Select Color Palette</h3>
-<p>Choose a colour palette used to colour incidents by category and by species on the maps and charts. Pick a named Matplotlib colormap (defaults to <code>tab10</code>) or define a custom list of hex colours.</p>
+<p>The color palette used to visually distinguish species and incident categories across the charts and maps in this report. Pick a named Matplotlib colormap (defaults to <code>tab10</code>) or define a custom list of hex colours.</p>
 <hr />
 <h2 id="3-run-the-workflow">3. Run the Workflow</h2>
 <p>Once submitted, the runner will:</p>
 <ol type="1">
-<li>Merge the uploaded CSV files on <code>Report ID</code>, then retain and rename the relevant columns to a standard schema.</li>
+<li>Log in to the Wildlife Trade Portal with your email and password, then search and export incidents recorded within your configured time range, downloading the requested export file(s).</li>
+<li>Merge the downloaded (and, if provided, your extra local) CSV files on <code>Report ID</code>, then retain and rename the relevant columns to a standard schema.</li>
 <li>For records with more than one trade-route location (Origin/Transit/Destination), retain a single representative row per report, species, and commodity.</li>
 <li>Convert numeric fields (count, weight, arrest/charge/fine/imprisonment counts, latitude, longitude) from text to numeric values, then convert the records to a point GeoDataFrame.</li>
 <li>Download the GVL 30km buffer boundary from Dropbox and reproject it to <code>EPSG:4326</code>.</li>

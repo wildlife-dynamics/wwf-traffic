@@ -11,13 +11,27 @@ import os
 import warnings  # 🧪
 from typing import Any
 
+from ecoscope.platform.tasks.config import set_workflow_details as set_workflow_details
+from ecoscope.platform.tasks.skip import (
+    any_dependency_skipped as any_dependency_skipped,
+)
+from ecoscope.platform.tasks.skip import any_is_empty_df as any_is_empty_df
+from wt_contracts import validate as _validate
+from wt_task import task
+from wt_task.testing import create_func_magicmock  # 🧪
+
+from .. import metadata as _metadata
+
+connect_to_traffic_portal_with_credentials = create_func_magicmock(  # 🧪
+    anchor="ecoscope_workflows_ext_wwf_virunga.tasks.io",  # 🧪
+    func_name="connect_to_traffic_portal_with_credentials",  # 🧪
+)  # 🧪
 from ecoscope.platform.tasks.analysis import (
     apply_arithmetic_operation as apply_arithmetic_operation,
 )
 from ecoscope.platform.tasks.analysis import (
     dataframe_column_sum as dataframe_column_sum,
 )
-from ecoscope.platform.tasks.config import set_workflow_details as set_workflow_details
 from ecoscope.platform.tasks.filter import (
     get_timezone_from_time_range as get_timezone_from_time_range,
 )
@@ -45,10 +59,6 @@ from ecoscope.platform.tasks.results import (
 from ecoscope.platform.tasks.results import draw_table as draw_table
 from ecoscope.platform.tasks.results import gather_dashboard as gather_dashboard
 from ecoscope.platform.tasks.results import merge_widget_views as merge_widget_views
-from ecoscope.platform.tasks.skip import (
-    any_dependency_skipped as any_dependency_skipped,
-)
-from ecoscope.platform.tasks.skip import any_is_empty_df as any_is_empty_df
 from ecoscope.platform.tasks.skip import (
     any_keyed_iterables_are_skips as any_keyed_iterables_are_skips,
 )
@@ -108,6 +118,9 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.extra import (
     merge_traffic_xlsx as merge_traffic_xlsx,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.io import (
+    download_traffic_incidents as download_traffic_incidents,
+)
+from ecoscope_workflows_ext_wwf_virunga.tasks.io import (
     load_and_merge_csvs as load_and_merge_csvs,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
@@ -140,10 +153,6 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
     set_color_palette as set_color_palette,
 )
-from wt_contracts import validate as _validate
-from wt_task import task
-
-from .. import metadata as _metadata
 
 
 def main(params: dict[str, Any], validate_params_schema: bool = True):
@@ -166,6 +175,26 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(**(params.get("workflow_details") or {}))
+        .call()
+    )
+
+    connect_to_traffic = (
+        task(connect_to_traffic_portal_with_credentials)
+        # 🧪 validation omitted for mocked IO task (returns pre-loaded example data)
+        .set_task_instance_id("connect_to_traffic")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            base_url="https://www.wildlifetradeportal.org/",
+            **(params.get("connect_to_traffic") or {}),
+        )
         .call()
     )
 
@@ -237,6 +266,33 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
+    download_traffic_csvs = (
+        task(download_traffic_incidents)
+        .validate()
+        .set_task_instance_id("download_traffic_csvs")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            client=connect_to_traffic,
+            time_range=time_range,
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            export_types=[
+                "Incident Data Only",
+                "Incident Summary + Species",
+                "Incident Summary + Locations",
+            ],
+            **(params.get("download_traffic_csvs") or {}),
+        )
+        .call()
+    )
+
     load_traffic_csvs = (
         task(load_and_merge_csvs)
         .validate()
@@ -250,7 +306,11 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             unpack_depth=1,
         )
-        .partial(on="Report ID", **(params.get("load_traffic_csvs") or {}))
+        .partial(
+            file_paths=download_traffic_csvs,
+            on="Report ID",
+            **(params.get("load_traffic_csvs") or {}),
+        )
         .call()
     )
 

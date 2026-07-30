@@ -22,7 +22,7 @@
 
   <main>
     <h1>WWF Traffic Workflow</h1>
-    <p class="lede">Processes user-uploaded wildlife trafficking incident reports, filters them to incidents within a 30km buffer of the Greater Virunga Landscape (GVL) boundary, and produces an interactive dashboard of trafficking trends by species, incident category, and country.</p>
+    <p class="lede">Connects directly to the TRAFFIC Wildlife Trade Portal to download wildlife trafficking incident reports for a configured time range, filters them to incidents within a 30km buffer of the Greater Virunga Landscape (GVL) boundary, and produces an interactive dashboard of trafficking trends by species, incident category, and country.</p>
 
     <div class="card-grid">
       <a class="card" href="user-guide.html">
@@ -31,7 +31,7 @@
       </a>
       <a class="card" href="technical-guide.html">
         <h3>Technical Guide</h3>
-        <p>Deeper look at the workflow's internals &mdash; the CSV merge pipeline, map/chart methodology, and metric calculations.</p>
+        <p>Deeper look at the workflow's internals &mdash; the portal download &amp; CSV merge pipeline, map/chart methodology, and metric calculations.</p>
       </a>
       <a class="card" href="troubleshooting.html">
         <h3>Troubleshooting</h3>
@@ -50,11 +50,11 @@
     </ul>
 
     <h2>Requirements</h2>
-    <p><strong>Three CSV exports from the TRAFFIC dataset</strong>, uploaded together, all sharing a common <code>Report ID</code> column &mdash; an incident/case file, a species/commodity file, and a trade-route/location file. No single export contains all the columns this workflow needs. See the <a href="user-guide.html#requirements">User Guide</a> for the exact column breakdown.</p>
+    <p><strong>A Wildlife Trade Portal account.</strong> The workflow logs in to <a href="https://www.wildlifetradeportal.org/">wildlifetradeportal.org</a> on your behalf with your email and password and downloads the incidents recorded within your configured time range &mdash; no manual CSV export/upload is required. Behind the scenes it downloads three portal export types (an incident/case export, a species/commodity export, and a trade-route/location export) and merges them on a shared <code>Report ID</code> column. See the <a href="user-guide.html#requirements">User Guide</a> for the exact column breakdown.</p>
     <p>The GVL 30km buffer boundary is downloaded automatically from Dropbox at runtime &mdash; no local copy is required.</p>
 
     <h2>Get started</h2>
-    <p>New to the workflow? Start with the <a href="user-guide.html">User Guide</a> for a walkthrough of loading the template, uploading the three required CSV files, and configuring the grouping strategy. Running into an error? Check <a href="troubleshooting.html">Troubleshooting</a> first.</p>
+    <p>New to the workflow? Start with the <a href="user-guide.html">User Guide</a> for a walkthrough of loading the template, connecting your Wildlife Trade Portal account, and configuring the grouping strategy. Running into an error? Check <a href="troubleshooting.html">Troubleshooting</a> first.</p>
   </main>
 
   <footer class="site-footer">

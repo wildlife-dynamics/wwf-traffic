@@ -135,17 +135,22 @@ def build():
     story += [
         h1("1. Overview"), hr(),
         p(
-            "The <b>WWF Traffic</b> workflow processes user-uploaded wildlife trafficking "
-            "incident reports from the <b>TRAFFIC</b> wildlife trade database, filters them "
-            "to incidents within a 30 km buffer of the <b>Greater Virunga Landscape (GVL)</b> "
-            "boundary, and produces an interactive dashboard of trafficking trends by "
-            "species, incident category, and country."
+            "The <b>WWF Traffic</b> workflow logs in to the <b>TRAFFIC Wildlife Trade "
+            "Portal</b> (wildlifetradeportal.org) on the user's behalf, downloads wildlife "
+            "trafficking incident export CSVs for a configured time range, filters the "
+            "resulting incidents to a 30 km buffer of the <b>Greater Virunga Landscape "
+            "(GVL)</b> boundary, and produces an interactive dashboard of trafficking "
+            "trends by species, incident category, and country."
         ),
         p(
             "Unlike the EarthRanger-connected workflows in this fleet, WWF Traffic has no "
-            "live data source — all input data is supplied as CSV uploads at run time, and "
-            "the only network dependency is a one-time download of the GVL boundary file "
-            "from Dropbox."
+            "EarthRanger data source. Instead, a Playwright-driven browser automation "
+            "automation (&sect;2.1) logs in to the portal, searches by date range, and "
+            "exports the incident CSVs directly — the user only supplies portal credentials "
+            "and a time range, with no manual export/upload step required. An optional "
+            "local CSV can still be merged in for supplementary records "
+            "(&sect;3.8), and the only other network dependency is a one-time download of "
+            "the GVL boundary file from Dropbox."
         ),
         note(
             "This workflow currently has no <code>test-cases.yaml</code> in the repository. "
@@ -158,12 +163,68 @@ def build():
     story += [
         sp(4), h1("2. Dependencies &amp; Prerequisites"), hr(),
 
-        h2("2.1 Input Data — Three Merged CSV Files"),
+        h2("2.1 Traffic Portal Connection &amp; Download"),
         p(
-            "<code>load_and_merge_csvs</code> takes a list of uploaded CSV file paths and "
-            "merges them sequentially on <code>Report ID</code>. The workflow's retained "
-            "columns span three functional groups of data that, in the TRAFFIC dataset "
-            "export, come from separate files:"
+            "<code>connect_to_traffic_portal_with_credentials</code> builds a portal client "
+            "directly from a <code>base_url</code> (fixed to "
+            "<code>https://www.wildlifetradeportal.org/</code> via <code>partial</code>), "
+            "plus a <code>username</code> and <code>password</code> entered on the "
+            "workflow's own config form — there is no platform-managed named connection for "
+            "the Traffic Portal yet, so credentials are regular form fields rather than an "
+            "env-var-backed connection."
+        ),
+        p(
+            "The resulting client is passed to <code>download_traffic_incidents</code> "
+            "along with the workflow's configured <code>time_range</code> and an "
+            "<code>output_dir</code> (<code>ECOSCOPE_WORKFLOWS_RESULTS</code>). Internally, "
+            "<code>TrafficPortalSession.download_incidents</code> drives a Playwright-"
+            "controlled Chromium browser (launched non-headless) through the portal's own "
+            "manual export flow: log "
+            "in, fill the Start/End Date pickers (portal only accepts whole days, "
+            "<code>DD/MM/YYYY</code>), search, select &ldquo;All Records&rdquo;, open the "
+            "Export dialog, toggle on the requested export types, fill in the justification "
+            "<code>reason</code> text, and click each export type's button to trigger and "
+            "save its download."
+        ),
+        make_table(
+            [
+                [c("Export type"),                        c("Downloaded filename")],
+                [c("Incident Data Only"),                 c("incident_data.csv")],
+                [c("Incident Summary + Species"),         c("incident_summary_species.csv")],
+                [c("Incident Summary + Locations"),       c("incident_summary_locations.csv")],
+            ],
+            [7*cm, 9*cm],
+        ),
+        sp(4),
+        p(
+            "All three are enabled by default (<code>export_types</code>, an advanced "
+            "field) — they correspond exactly to the incident/case, species/commodity, and "
+            "trade-route/location files described in &sect;2.2, so disabling one will cause "
+            "the downstream column-presence check in &sect;3.1 to fail. The default "
+            "justification text is <code>\"Research on incidents\"</code> "
+            "(<code>reason</code>, also advanced)."
+        ),
+        p(
+            "Each download attempt gets a fresh browser and login, and retries up to 3 "
+            "times (<code>max_attempts</code>) on failure before raising. On any failure, a "
+            "screenshot and the page's HTML are written to a <code>debug/</code> "
+            "subdirectory under the results directory for diagnosis. A username with "
+            "accidental leading/trailing whitespace is stripped before submission; the "
+            "password is sent exactly as entered, since it could legitimately contain "
+            "meaningful whitespace."
+        ),
+        p(
+            "The downloaded file paths feed directly into <code>load_and_merge_csvs."
+            "file_paths</code> (&sect;2.2) — there is no separate manual upload step in "
+            "this workflow's config form."
+        ),
+
+        sp(4), h2("2.2 Input Data — Three Merged CSV Exports"),
+        p(
+            "<code>load_and_merge_csvs</code> takes the list of file paths returned by the "
+            "download step (&sect;2.1) and merges them sequentially on <code>Report ID</code>. "
+            "The workflow's retained columns span three functional groups of data that, in "
+            "the TRAFFIC portal export, come from separate files:"
         ),
         make_table(
             [
@@ -188,7 +249,7 @@ def build():
             "<code>date_of_incident</code>)."
         ),
 
-        sp(4), h2("2.2 Grouping Strategy"),
+        sp(4), h2("2.3 Grouping Strategy"),
         p(
             "<code>set_groupers</code> is restricted via <code>rjsf-overrides</code> to only "
             "<b>ValueGrouper</b> fields (temporal and spatial grouping are disabled for this "
@@ -196,16 +257,22 @@ def build():
         ),
         make_table(
             [
-                [c("Grouper"),             c("Column"),             c("Effect")],
-                [c("Species"),             c("common_group"),       c("One dashboard view per mapped species group")],
-                [c("Country"),             c("country_of_incident"), c("One dashboard view per country of incident")],
+                [c("Grouper"),             c("Index name"),         c("Effect")],
+                [c("Species"),             c("category"),           c("One dashboard view per mapped species group")],
+                [c("Country"),             c("country"),            c("One dashboard view per country")],
             ],
             [3.5*cm, 4.5*cm, 8*cm],
         ),
         sp(4),
-        p("Left blank, the workflow produces a single combined view."),
+        p(
+            "Left blank, the workflow produces a single combined view. The selectable "
+            "<code>index_name</code> values changed from <code>common_group</code>/"
+            "<code>country_of_incident</code> to <code>category</code>/<code>country</code> "
+            "in this revision of <code>spec.yaml</code> — the dropdown labels shown to the "
+            "user (Species / Country) are unchanged."
+        ),
 
-        sp(4), h2("2.3 GVL 30 km Buffer Boundary"),
+        sp(4), h2("2.4 GVL 30 km Buffer Boundary"),
         p(
             "<code>fetch_and_persist_file</code> downloads <code>gvl_30km_buffer.parquet</code> "
             "from Dropbox (<code>overwrite_existing: true</code>, 3 retries) and loads it via "
@@ -214,7 +281,7 @@ def build():
             "(&sect;3.5) and as a static map layer (&sect;4)."
         ),
 
-        sp(4), h2("2.4 Base Map Tile Layers"),
+        sp(4), h2("2.5 Base Map Tile Layers"),
         make_table(
             [
                 [c("Layer"),                        c("Opacity"), c("Max zoom")],
@@ -224,7 +291,7 @@ def build():
             [10*cm, 2.5*cm, 4*cm],
         ),
 
-        sp(4), h2("2.5 Colour Palette"),
+        sp(4), h2("2.6 Colour Palette"),
         p(
             "<code>set_color_palette</code> defaults to the Matplotlib <b>tab10</b> named "
             "colormap, but accepts a custom list of hex colours instead. The chosen palette "
@@ -241,7 +308,7 @@ def build():
 
         h2("3.1 Column Mapping"),
         p(
-            "After the CSV merge, <code>map_columns</code> retains 23 columns (see &sect;2.1) "
+            "After the CSV merge, <code>map_columns</code> retains 23 columns (see &sect;2.2) "
             "and renames them to snake_case (<code>raise_if_not_found: true</code> — the "
             "run fails immediately if any expected column is missing from the merged data)."
         ),
@@ -304,6 +371,18 @@ def build():
             "<code>incident_</code>, e.g. <code>incident_year</code>) for the time-series "
             "aggregations in &sect;6."
         ),
+
+        sp(4), h2("3.8 Optional Local Data Merge"),
+        p(
+            "<code>load_extra_data</code> (task <code>load_df</code>) optionally loads a "
+            "user-supplied local CSV of additional incident records — its <code>file_path</code> "
+            "is left unbound in <code>spec.yaml</code> so it remains a plain config-form "
+            "field, unlike every other input in this pipeline, which is now sourced "
+            "automatically from the Traffic Portal download (&sect;2.1). "
+            "<code>merge_traffic_xlsx</code> then merges it against the temporal-indexed "
+            "portal dataset from &sect;3.7, and the merged result is re-converted to a "
+            "point GeoDataFrame before colour mapping (&sect;2.6)."
+        ),
     ]
 
     # ── 4. Static Map Layers ──────────────────────────────────────────────────
@@ -335,7 +414,7 @@ def build():
         h2("5.1 Incidents Map"),
         p(
             "<code>create_scatterplot_layer</code> renders each incident as a point coloured "
-            "by <code>incident_colors</code> (from &sect;2.5), at 2.35 px radius and 75 % "
+            "by <code>incident_colors</code> (from &sect;2.6), at 2.35 px radius and 75 % "
             "opacity with stroked outlines. Combined with the GVL boundary layer, auto-zoomed "
             "to the incident extent (max zoom 12 for view-state calculation, 10 for the "
             "rendered map), and persisted as HTML."
@@ -510,9 +589,10 @@ def build():
             [
                 [c("Stage"),              c("Tasks")],
                 [c("Setup"),              c("Workflow details, time range, timezone, groupers, base maps, colour palette")],
-                [c("Ingest"),             c("Merge CSVs → map columns → dedupe trade routes → numeric conversion → point GDF")],
+                [c("Portal download"),    c("Connect to Traffic Portal with credentials → download incident export CSVs for time range")],
+                [c("Ingest"),             c("Merge downloaded CSVs (+ optional local CSV) → map columns → dedupe trade routes → numeric conversion → point GDF")],
                 [c("GVL context"),        c("Download GVL buffer → reproject → spatial join → country restriction")],
-                [c("Labelling"),          c("Species mapping → incident category mapping → temporal index → colormaps")],
+                [c("Labelling"),          c("Species mapping → incident category mapping → temporal index → optional local merge → colormaps")],
                 [c("Group split"),        c("split_groups by configured grouper (or single combined group)")],
                 [c("Metrics"),            c("Per-year incidents/arrests/imprisonments, conviction rate, ivory totals, top species")],
                 [c("Charts"),             c("Species &amp; category time-series bar charts")],
@@ -533,7 +613,7 @@ def build():
                 [c("ecoscope-platform"),                    c(">=2.15.0, &lt;2.16.0"),  c("Consolidated core task library and workflow engine")],
                 [c("ecoscope-workflows-ext-custom"),        c("0.1.0rc14.*"),           c("Utility tasks (maps, layers, column mapping)")],
                 [c("ecoscope-workflows-ext-ste"),           c("0.0.0rc1.*"),            c("Spatial operations tasks (spatial join, view state)")],
-                [c("ecoscope-workflows-ext-wwf-virunga"),   c("0.0.0rc1.*"),            c("WWF Virunga domain tasks (colormaps, aggregation, ratios, top-category)")],
+                [c("ecoscope-workflows-ext-wwf-virunga"),   c("0.0.0rc3.*"),            c("WWF Virunga domain tasks (colormaps, aggregation, ratios, top-category, portal download)")],
                 [c("pydeck"),                                c("0.9.2"),                 c("Deck.gl map rendering")],
                 [c("opentelemetry-sdk"),                    c(">=1.20.0, &lt;2.0.0"),   c("Observability/tracing")],
             ],

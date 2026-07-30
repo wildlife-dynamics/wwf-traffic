@@ -13,7 +13,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-wwf-virunga
-    version: "0.0.0rc2.*"
+    version: "0.0.0rc3.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: pydeck
@@ -34,21 +34,64 @@ rjsf-overrides:
   $defs:
     # Restrict category options to Country of Incident , Species (common_group)
     ValueGrouper.properties.index_name.oneOf:
-      - const: common_group
+      - const: category
         title: Species
 
-      - const: country_of_incident
+      - const: country
         title: Country
   properties:
+    workflow_details.description: >-
+      A name and description to help you tell this run apart from others later
+      (for example when comparing different date ranges or filters). These are
+      only used for your own reference and have no effect on the data retrieved.
+
+    connect_to_traffic.description: >-
+      Connect to the TRAFFIC Wildlife Trade Portal. Use the same email and
+      password you used when signing up on this platform:
+      https://www.wildlifetradeportal.org/ 
+
     # Restrict groupers to only ValueGroupers (no TemporalGrouper/SpatialGrouper)
     groupers.properties.groupers.items.anyOf: [
       {"$ref": "#/$defs/ValueGrouper"},
     ]
+    groupers.description: >-
+      Choose how incidents should be split into separate maps, charts, and
+      tables
+      
+    configure_base_maps.description: >-
+      The background map tile layers used when rendering the incident and
+      species maps in this report. The defaults provide topographic and
+      satellite imagery; only change these if you need a different base map
+      source.
 
-workflow: 
+    download_traffic_csvs.description: >-
+      Controls which incident export files are downloaded from
+      https://www.wildlifetradeportal.org/ and the justification text required
+      by the portal's own export form.
+
+    incident_species_colormap.description: >-
+      The color palette used to visually distinguish species and incident
+      categories across the charts and maps in this report.
+
+    load_extra_data.description: >-
+      Path to an additional local CSV file of incident records to merge with
+      the data retrieved from the Wildlife Trade Portal
+
+    time_range.description: >-
+      The time range set here is used to retrieve incidents data from
+      https://www.wildlifetradeportal.org/ only incidents recorded within
+      this window will be included in the report.
+
+workflow:
   - name: Workflow Details 
     id: workflow_details 
     task: set_workflow_details 
+
+  - name: Connect to traffic portal 
+    id: connect_to_traffic 
+    task: connect_to_traffic_portal_with_credentials
+    partial: 
+      base_url: "https://www.wildlifetradeportal.org/"
 
   - name: Time Range 
     id: time_range 
@@ -67,11 +110,25 @@ workflow:
   - name: Configure Basemaps
     id: configure_base_maps 
     task: set_base_maps_pydeck
+    
+  - name: Download Traffic Portal Incidents
+    id: download_traffic_csvs
+    task: download_traffic_incidents
+    partial:
+      client: ${{ workflow.connect_to_traffic.return }}
+      time_range: ${{ workflow.time_range.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      export_types: [ 
+        "Incident Data Only",
+        "Incident Summary + Species",
+        "Incident Summary + Locations"
+        ]
 
-  - name: Load Traffic CSV files 
-    id: load_traffic_csvs 
-    task: load_and_merge_csvs 
-    partial: 
+  - name: Load Traffic CSV files
+    id: load_traffic_csvs
+    task: load_and_merge_csvs
+    partial:
+      file_paths: ${{ workflow.download_traffic_csvs.return }}
       on: "Report ID"
 
   - name: Map columns
@@ -287,18 +344,8 @@ workflow:
     id: load_extra_data
     task: load_df
     partial:
-      #file_path: null # TODO: set path to extra data file
       layer: null
       deserialize_json: false
-
-  # - name: Persist cleaned data as csv 
-  #   id: persist_clean_data 
-  #   task: persist_df 
-  #   partial: 
-  #     filetype: csv 
-  #     root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-  #     filename: cleaned_data 
-  #     df: ${{ workflow.cmap_species.return }}
 
   - name: Merge external with traffic data
     id: merge_external_traffic
