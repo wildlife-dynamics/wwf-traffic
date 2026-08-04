@@ -26,16 +26,14 @@
         "username": {
           "default": "",
           "title": "Username",
-          "type": "string",
-          "description": "Wildlife Trade Portal login email"
+          "type": "string"
         },
         "password": {
           "default": "",
           "format": "password",
           "title": "Password",
           "type": "string",
-          "writeOnly": true,
-          "description": "Wildlife Trade Portal login password"
+          "writeOnly": true
         }
       },
       "type": "object",
@@ -318,21 +316,6 @@
       "type": "object",
       "required": [],
       "title": "Configure Basemaps"
-    },
-    "download_traffic_csvs": {
-      "additionalProperties": false,
-      "properties": {
-        "reason": {
-          "default": "Research on incidents",
-          "title": "Reason",
-          "type": "string",
-          "description": "Justification text required by the portal's export form.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Download Traffic Portal Incidents"
     },
     "load_extra_data": {
       "additionalProperties": false,
@@ -746,7 +729,6 @@
       "time_range",
       "groupers",
       "configure_base_maps",
-      "download_traffic_csvs",
       "load_extra_data",
       "incident_species_colormap",
       "zoom_to_envelope"

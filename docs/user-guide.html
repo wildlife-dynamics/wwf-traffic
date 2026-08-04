@@ -38,16 +38,16 @@
 
     <h2 id="requirements">Requirements</h2>
     <ul>
-      <li><strong>A Wildlife Trade Portal account.</strong> The workflow logs in to <a href="https://www.wildlifetradeportal.org/">wildlifetradeportal.org</a> on your behalf using the same email and password you use to sign in there, and downloads the incidents recorded within your configured time range. No manual CSV export/upload is required.</li>
+      <li><strong>A Wildlife Trade Portal account.</strong> The workflow connects directly to the <a href="https://www.wildlifetradeportal.org/">wildlifetradeportal.org</a> API using your email and password (or an access token), searches for incidents in your configured time range, and exports them. No manual CSV export/upload, and no browser, is required.</li>
       <li><em>(Optional)</em> <strong>An additional local CSV file</strong> of incident records if you want to merge your own data with what's retrieved from the portal (see <a href="#load-extra-data">Load Extra Data</a>).</li>
     </ul>
-    <p>Behind the scenes, the workflow downloads three portal export types &mdash; an incident/case export, a species/commodity export, and a trade-route/location export &mdash; and merges them on a shared <code>Report ID</code> column:</p>
+    <p>Behind the scenes, the workflow searches the portal &mdash; scoped by default to incidents in <strong>Rwanda</strong>, <strong>Uganda</strong>, and <strong>Congo, Democratic Republic of The</strong> (see <a href="#download">Download Traffic Portal Incidents</a>) &mdash; then exports the matching incidents as up to three CSVs, merged on a shared <code>Report ID</code> column:</p>
     <ul>
-      <li>An <strong>incident/case export</strong> &mdash; <code>Report ID</code>, <code>Category of Incident</code>, <code>Country of Incident</code>, <code>Date of Incident</code>, <code>Outcome</code>, <code>Number of People Arrested</code>, <code>Number of People Charged</code>, <code>Number of People Fined</code>, <code>Number of People Imprisoned</code></li>
-      <li>A <strong>species/commodity export</strong> &mdash; <code>Report ID</code>, <code>Full Scientific Name</code>, <code>Item / Commodity Type</code>, <code>Count</code>, <code>Weight</code>, <code>Unit of Weight</code>, <code>Kingdom</code>, <code>Phylum</code>, <code>Class</code>, <code>Order</code>, <code>Family</code>, <code>Common Name</code></li>
-      <li>A <strong>trade-route/location export</strong> &mdash; <code>Report ID</code>, <code>Role</code>, <code>Order in Trade Route</code>, <code>Country</code>, <code>Latitude</code>, <code>Longitude</code></li>
+      <li>An <strong>incident/case export</strong> (always included) &mdash; <code>Report ID</code>, <code>Category of Incident</code>, <code>Country of Incident</code>, <code>Date of Incident</code>, <code>Outcome</code>, <code>Number of People Arrested</code>, <code>Number of People Charged</code>, <code>Number of People Fined</code>, <code>Number of People Imprisoned</code></li>
+      <li>A <strong>species/commodity export</strong> (included by default, toggled via Include Species) &mdash; <code>Report ID</code>, <code>Full Scientific Name</code>, <code>Item / Commodity Type</code>, <code>Count</code>, <code>Weight</code>, <code>Unit of Weight</code>, <code>Kingdom</code>, <code>Phylum</code>, <code>Class</code>, <code>Order</code>, <code>Family</code>, <code>Common Name</code></li>
+      <li>A <strong>trade-route/location export</strong> (included by default, toggled via Include Locations) &mdash; <code>Report ID</code>, <code>Role</code>, <code>Order in Trade Route</code>, <code>Country</code>, <code>Latitude</code>, <code>Longitude</code></li>
     </ul>
-    <p>This happens automatically; you don't need to configure it unless you want to change which export types are downloaded (see <a href="#download">Download Traffic Portal Incidents</a>). <code>Category of Incident</code>, <code>Country of Incident</code>, and <code>Date of Incident</code> appear in more than one of the three exports. After merging, only the version from the first-downloaded export is kept (internally suffixed <code>_x</code>).</p>
+    <p>This happens automatically; you don't need to configure it unless you want to widen the country scope or change which extra breakdowns are included (see <a href="#download">Download Traffic Portal Incidents</a>). <code>Category of Incident</code>, <code>Country of Incident</code>, and <code>Date of Incident</code> appear in more than one of the three exports. After merging, only the version from the first-downloaded export is kept (internally suffixed <code>_x</code>).</p>
     <p>The GVL 30km buffer boundary is downloaded automatically from Dropbox at runtime &mdash; no local copy is required.</p>
 
     <h2 id="load">1. Load the Workflow</h2>
@@ -74,9 +74,13 @@
       <tbody>
         <tr><td>Email</td><td>Your Wildlife Trade Portal login email</td></tr>
         <tr><td>Password</td><td>Your Wildlife Trade Portal login password</td></tr>
+        <tr><td>Access Token <em>(advanced)</em></td><td>An existing bearer token &mdash; if supplied, password login is skipped entirely</td></tr>
+        <tr><td>Server <em>(advanced)</em></td><td>Base API host (defaults to <code>https://www.wildlifetradeportal.org/</code>)</td></tr>
+        <tr><td>Timeout (s) <em>(advanced)</em></td><td>Per-request timeout in seconds (defaults to <code>30</code>)</td></tr>
+        <tr><td>Verify Token <em>(advanced)</em></td><td>When a token is supplied, validate it immediately (defaults to on)</td></tr>
       </tbody>
     </table>
-    <p>The workflow drives a real browser session against the portal to log in and export data, the same way you would manually &mdash; nothing about your account is stored beyond this run.</p>
+    <p>The workflow talks directly to the portal's API &mdash; no browser is launched. If a request is rate-limited, it automatically waits and retries with backoff before giving up; nothing about your account is stored beyond this run.</p>
 
     <h3 id="time-range">Time Range</h3>
     <p>The time range set here is used to retrieve incidents data from the Wildlife Trade Portal &mdash; only incidents recorded within this window will be included in the report.</p>
@@ -112,12 +116,16 @@
     </table>
 
     <h3 id="download">Download Traffic Portal Incidents</h3>
-    <p>Controls which incident export files are downloaded from the Wildlife Trade Portal and the justification text required by the portal's own export form. These are advanced fields &mdash; the defaults work for a standard run:</p>
+    <p>Searches the portal for incidents in your configured time range and exports the matches to CSV. The defaults work for a standard run &mdash; they scope the search to the Greater Virunga Landscape's three countries and include all three export types needed for the merge described in <a href="#requirements">Requirements</a>:</p>
     <table>
       <thead><tr><th>Field</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>Export Types</td><td>Which portal export files to download. Defaults to all three: <strong>Incident Data Only</strong>, <strong>Incident Summary + Species</strong>, <strong>Incident Summary + Locations</strong> &mdash; all three are needed for the merge described in <a href="#requirements">Requirements</a>, so leave this at the default unless you have a specific reason to change it.</td></tr>
-        <tr><td>Reason</td><td>Justification text required by the portal's own export form (defaults to <code>Research on incidents</code>)</td></tr>
+        <tr><td>Reason</td><td>Audit-trail justification text required by the portal (defaults to <code>Research and analysis of wildlife trade incidents in the Virunga region for conservation purposes.</code>)</td></tr>
+        <tr><td>Species</td><td>Optional species codes to further narrow the search (leave blank for all species)</td></tr>
+        <tr><td>Countries</td><td>Countries to search within. Defaults to <strong>Rwanda</strong>, <strong>Uganda</strong>, and <strong>Congo, Democratic Republic of The</strong> &mdash; widen this list only if you want incidents outside the Virunga region (they'll still be dropped later by the GVL boundary/country filters described in <a href="#run">Run the Workflow</a> unless you also adjust those).</td></tr>
+        <tr><td>Include Species <em>(advanced)</em></td><td>Also download the species/commodity export (defaults to on)</td></tr>
+        <tr><td>Include Locations <em>(advanced)</em></td><td>Also download the trade-route/location export (defaults to on)</td></tr>
+        <tr><td>Sub Page Size <em>(advanced)</em></td><td>Rows requested per underlying API page (defaults to <code>100</code> if left blank). This is a batching size, not a limit &mdash; every matching incident in your time range is always fetched, no matter how many that is.</td></tr>
       </tbody>
     </table>
 
@@ -130,7 +138,7 @@
     <h2 id="run">3. Run the Workflow</h2>
     <p>Once submitted, the runner will:</p>
     <ol>
-      <li>Log in to the Wildlife Trade Portal with your email and password, then search and export incidents recorded within your configured time range, downloading the requested export file(s).</li>
+      <li>Connect to the Wildlife Trade Portal API with your email/password or access token, then search for incidents matching your configured time range, species, and countries, and export the matches (plus species/locations breakdowns, if enabled) to CSV &mdash; automatically retrying with backoff if the portal rate-limits the request.</li>
       <li>Merge the downloaded (and, if provided, your extra local) CSV files on <code>Report ID</code>, then retain and rename the relevant columns to a standard schema.</li>
       <li>For records with more than one trade-route location (Origin/Transit/Destination), retain a single representative row per report, species, and commodity.</li>
       <li>Convert numeric fields (count, weight, arrest/charge/fine/imprisonment counts, latitude, longitude) from text to numeric values, then convert the records to a point GeoDataFrame.</li>

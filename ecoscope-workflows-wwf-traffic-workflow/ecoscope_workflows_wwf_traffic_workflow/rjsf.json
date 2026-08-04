@@ -26,16 +26,14 @@
         "username": {
           "default": "",
           "title": "Username",
-          "type": "string",
-          "description": "Wildlife Trade Portal login email"
+          "type": "string"
         },
         "password": {
           "default": "",
           "format": "password",
           "title": "Password",
           "type": "string",
-          "writeOnly": true,
-          "description": "Wildlife Trade Portal login password"
+          "writeOnly": true
         }
       },
       "type": "object",
@@ -315,22 +313,6 @@
       "required": [],
       "title": "Configure Basemaps",
       "description": "The background map tile layers used when rendering the incident and species maps in this report. The defaults provide topographic and satellite imagery; only change these if you need a different base map source."
-    },
-    "download_traffic_csvs": {
-      "additionalProperties": false,
-      "properties": {
-        "reason": {
-          "default": "Research on incidents",
-          "title": "Reason",
-          "type": "string",
-          "description": "Justification text required by the portal's export form.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Download Traffic Portal Incidents",
-      "description": "Controls which incident export files are downloaded from https://www.wildlifetradeportal.org/ and the justification text required by the portal's own export form."
     },
     "load_extra_data": {
       "additionalProperties": false,
@@ -763,7 +745,6 @@
       "time_range",
       "groupers",
       "configure_base_maps",
-      "download_traffic_csvs",
       "load_extra_data",
       "incident_species_colormap",
       "Map Zoom & Extent"

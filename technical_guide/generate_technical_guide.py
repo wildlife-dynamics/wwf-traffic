@@ -144,11 +144,12 @@ def build():
         ),
         p(
             "Unlike the EarthRanger-connected workflows in this fleet, WWF Traffic has no "
-            "EarthRanger data source. Instead, a Playwright-driven browser automation "
-            "automation (&sect;2.1) logs in to the portal, searches by date range, and "
-            "exports the incident CSVs directly — the user only supplies portal credentials "
-            "and a time range, with no manual export/upload step required. An optional "
-            "local CSV can still be merged in for supplementary records "
+            "EarthRanger data source. Instead, a lightweight REST client (&sect;2.1) "
+            "authenticates directly against the portal's API, searches by date range, "
+            "species, and country, and exports the matching incidents as CSV — the user "
+            "only supplies portal credentials (or an access token) and a time range, with "
+            "no manual export/upload step and no browser required. An optional local CSV "
+            "can still be merged in for supplementary records "
             "(&sect;3.8), and the only other network dependency is a one-time download of "
             "the GVL boundary file from Dropbox."
         ),
@@ -165,53 +166,65 @@ def build():
 
         h2("2.1 Traffic Portal Connection &amp; Download"),
         p(
-            "<code>connect_to_traffic_portal_with_credentials</code> builds a portal client "
-            "directly from a <code>base_url</code> (fixed to "
-            "<code>https://www.wildlifetradeportal.org/</code> via <code>partial</code>), "
-            "plus a <code>username</code> and <code>password</code> entered on the "
-            "workflow's own config form — there is no platform-managed named connection for "
-            "the Traffic Portal yet, so credentials are regular form fields rather than an "
-            "env-var-backed connection."
+            "<code>connect_to_portal</code> builds a <code>WildlifeTradePortalIO</code> "
+            "REST client — a small <code>requests</code>-based wrapper around the portal's "
+            "(unofficial, reverse-engineered) JSON API, not a browser. It accepts either an "
+            "<code>access_token</code> (advanced) or a <code>username</code>/<code>"
+            "password</code> pair entered on the workflow's own config form — there is no "
+            "platform-managed named connection for the Traffic Portal yet, so credentials "
+            "are regular form fields rather than an env-var-backed connection. "
+            "<code>server</code>, <code>timeout</code>, and <code>verify</code> (whether a "
+            "supplied token is validated immediately via a lightweight account lookup) round "
+            "out the advanced fields."
         ),
         p(
-            "The resulting client is passed to <code>download_traffic_incidents</code> "
-            "along with the workflow's configured <code>time_range</code> and an "
-            "<code>output_dir</code> (<code>ECOSCOPE_WORKFLOWS_RESULTS</code>). Internally, "
-            "<code>TrafficPortalSession.download_incidents</code> drives a Playwright-"
-            "controlled Chromium browser (launched non-headless) through the portal's own "
-            "manual export flow: log "
-            "in, fill the Start/End Date pickers (portal only accepts whole days, "
-            "<code>DD/MM/YYYY</code>), search, select &ldquo;All Records&rdquo;, open the "
-            "Export dialog, toggle on the requested export types, fill in the justification "
-            "<code>reason</code> text, and click each export type's button to trigger and "
-            "save its download."
+            "The resulting client is passed to <code>export_search_results</code> along "
+            "with the workflow's configured <code>time_range</code>, <code>species</code> "
+            "and <code>countries</code> filters, and a <code>save_to</code> path "
+            "(<code>ECOSCOPE_WORKFLOWS_RESULTS</code>). It runs the whole search-then-export "
+            "pipeline in one call: paginate through every incident matching the filters "
+            "(<code>date_from</code>/<code>date_till</code> sent as plain ISO "
+            "<code>YYYY-MM-DD</code>), collect their <code>Unique_ID</code>s, then request a "
+            "server-side export job for those IDs and download each resulting file via a "
+            "presigned S3 URL."
+        ),
+        p(
+            "<code>countries</code> defaults to <b>Rwanda</b>, <b>Uganda</b>, and "
+            "<b>Congo, Democratic Republic of The</b> — restricting the search itself, not "
+            "just the local filter in &sect;3.5. This matters for pagination: without a "
+            "country filter, the search has to walk through every incident worldwide in the "
+            "requested time range before the true count for these three countries is known, "
+            "which for a wide/unfiltered time range can mean the search never reaches far "
+            "enough back to surface older Virunga-region incidents at all. Scoping the "
+            "search server-side means the full requested history for the region is reachable "
+            "in far fewer requests."
         ),
         make_table(
             [
-                [c("Export type"),                        c("Downloaded filename")],
-                [c("Incident Data Only"),                 c("incident_data.csv")],
-                [c("Incident Summary + Species"),         c("incident_summary_species.csv")],
-                [c("Incident Summary + Locations"),       c("incident_summary_locations.csv")],
+                [c("Export type"),                        c("Toggle"),               c("Downloaded filename pattern")],
+                [c("Incident (always included)"),         c("&mdash;"),              c("wtp_export_incident_&lt;id&gt;_&lt;timestamp&gt;.csv")],
+                [c("Species/commodity"),                  c("include_species"),      c("wtp_export_species_&lt;id&gt;_&lt;timestamp&gt;.csv")],
+                [c("Trade-route/location"),               c("include_locations"),    c("wtp_export_locations_&lt;id&gt;_&lt;timestamp&gt;.csv")],
             ],
-            [7*cm, 9*cm],
+            [5*cm, 4*cm, 7*cm],
         ),
         sp(4),
         p(
-            "All three are enabled by default (<code>export_types</code>, an advanced "
-            "field) — they correspond exactly to the incident/case, species/commodity, and "
-            "trade-route/location files described in &sect;2.2, so disabling one will cause "
-            "the downstream column-presence check in &sect;3.1 to fail. The default "
-            "justification text is <code>\"Research on incidents\"</code> "
-            "(<code>reason</code>, also advanced)."
+            "Both toggles default to <code>true</code> in this workflow's <code>spec.yaml</code> "
+            "— all three files are needed for the merge described in &sect;2.2, so disabling "
+            "either one will cause the downstream column-presence check in &sect;3.1 to "
+            "fail. The default justification text is <code>\"Research and analysis of "
+            "wildlife trade incidents in the Virunga region for conservation purposes.\"</code> "
+            "(<code>reason</code>)."
         ),
         p(
-            "Each download attempt gets a fresh browser and login, and retries up to 3 "
-            "times (<code>max_attempts</code>) on failure before raising. On any failure, a "
-            "screenshot and the page's HTML are written to a <code>debug/</code> "
-            "subdirectory under the results directory for diagnosis. A username with "
-            "accidental leading/trailing whitespace is stripped before submission; the "
-            "password is sent exactly as entered, since it could legitimately contain "
-            "meaningful whitespace."
+            "<code>sub_page_size</code> controls how many rows are requested per underlying "
+            "API page (client default 100 if left blank) — it is purely a batching size, "
+            "<i>not</i> a cap on the total result set. Every incident matching the filters is "
+            "always fetched, walking every page regardless of how many that turns out to be. "
+            "If the portal responds with an HTTP 429 (rate limited), the client automatically "
+            "waits (honoring a <code>Retry-After</code> header when present, otherwise an "
+            "exponential backoff) and retries — up to 5 times by default — before raising."
         ),
         p(
             "The downloaded file paths feed directly into <code>load_and_merge_csvs."
@@ -589,7 +602,7 @@ def build():
             [
                 [c("Stage"),              c("Tasks")],
                 [c("Setup"),              c("Workflow details, time range, timezone, groupers, base maps, colour palette")],
-                [c("Portal download"),    c("Connect to Traffic Portal with credentials → download incident export CSVs for time range")],
+                [c("Portal download"),    c("Connect to Traffic Portal (credentials or token) → search &amp; export matching incidents (Rwanda/Uganda/Congo DRC by default) for time range")],
                 [c("Ingest"),             c("Merge downloaded CSVs (+ optional local CSV) → map columns → dedupe trade routes → numeric conversion → point GDF")],
                 [c("GVL context"),        c("Download GVL buffer → reproject → spatial join → country restriction")],
                 [c("Labelling"),          c("Species mapping → incident category mapping → temporal index → optional local merge → colormaps")],
@@ -613,7 +626,7 @@ def build():
                 [c("ecoscope-platform"),                    c(">=2.15.0, &lt;2.16.0"),  c("Consolidated core task library and workflow engine")],
                 [c("ecoscope-workflows-ext-custom"),        c("0.1.0rc14.*"),           c("Utility tasks (maps, layers, column mapping)")],
                 [c("ecoscope-workflows-ext-ste"),           c("0.0.0rc1.*"),            c("Spatial operations tasks (spatial join, view state)")],
-                [c("ecoscope-workflows-ext-wwf-virunga"),   c("0.0.0rc3.*"),            c("WWF Virunga domain tasks (colormaps, aggregation, ratios, top-category, portal download)")],
+                [c("ecoscope-workflows-ext-wwf-virunga"),   c("0.0.0rc7.*"),            c("WWF Virunga domain tasks (colormaps, aggregation, ratios, top-category, portal connect/search/export)")],
                 [c("pydeck"),                                c("0.9.2"),                 c("Deck.gl map rendering")],
                 [c("opentelemetry-sdk"),                    c(">=1.20.0, &lt;2.0.0"),   c("Observability/tracing")],
             ],

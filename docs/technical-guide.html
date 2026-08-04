@@ -27,7 +27,7 @@
     <p>
       <a href="assets/wwf_traffic_technical_guide.pdf">Download the full Technical Guide (PDF)</a>
     </p>
-    <p>Unlike the EarthRanger-connected workflows in this fleet, WWF Traffic has no EarthRanger data source &mdash; input data is downloaded directly from the TRAFFIC Wildlife Trade Portal via a browser-automated login/export flow, optionally merged with a local CSV, and the only other network dependency is a one-time Dropbox download of the GVL boundary file. This guide was written directly against the current <code>spec.yaml</code>.</p>
+    <p>Unlike the EarthRanger-connected workflows in this fleet, WWF Traffic has no EarthRanger data source &mdash; input data is downloaded directly from the TRAFFIC Wildlife Trade Portal via direct API calls (with automatic retry-with-backoff if the portal rate-limits a request), optionally merged with a local CSV, and the only other network dependency is a one-time Dropbox download of the GVL boundary file. This guide was written directly against the current <code>spec.yaml</code>.</p>
 
     <h2>Contents</h2>
     <ol>

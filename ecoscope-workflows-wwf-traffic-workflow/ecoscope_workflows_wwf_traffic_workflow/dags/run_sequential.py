@@ -99,12 +99,6 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.extra import (
     merge_traffic_xlsx as merge_traffic_xlsx,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.io import (
-    connect_to_traffic_portal_with_credentials as connect_to_traffic_portal_with_credentials,
-)
-from ecoscope_workflows_ext_wwf_virunga.tasks.io import (
-    download_traffic_incidents as download_traffic_incidents,
-)
-from ecoscope_workflows_ext_wwf_virunga.tasks.io import (
     load_and_merge_csvs as load_and_merge_csvs,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
@@ -115,6 +109,12 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.results import (
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.results import (
     get_top_category as get_top_category,
+)
+from ecoscope_workflows_ext_wwf_virunga.tasks.traffic import (
+    connect_to_portal as connect_to_portal,
+)
+from ecoscope_workflows_ext_wwf_virunga.tasks.traffic import (
+    export_search_results as export_search_results,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
     add_ratio_column as add_ratio_column,
@@ -165,7 +165,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     connect_to_traffic = (
-        task(connect_to_traffic_portal_with_credentials)
+        task(connect_to_portal)
         .validate()
         .set_task_instance_id("connect_to_traffic")
         .handle_errors()
@@ -178,7 +178,10 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            base_url="https://www.wildlifetradeportal.org/",
+            server="https://www.wildlifetradeportal.org/",
+            token="",
+            timeout=30,
+            verify=True,
             **(params.get("connect_to_traffic") or {}),
         )
         .call()
@@ -253,7 +256,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     download_traffic_csvs = (
-        task(download_traffic_incidents)
+        task(export_search_results)
         .validate()
         .set_task_instance_id("download_traffic_csvs")
         .handle_errors()
@@ -268,12 +271,13 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             client=connect_to_traffic,
             time_range=time_range,
-            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            export_types=[
-                "Incident Data Only",
-                "Incident Summary + Species",
-                "Incident Summary + Locations",
-            ],
+            reason="Research and analysis of wildlife trade incidents in the Virunga region for conservation purposes.",
+            save_to=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            species=None,
+            countries=["Rwanda", "Uganda", "Congo, Democratic Republic of The"],
+            sub_page_size=None,
+            include_species=True,
+            include_locations=True,
             **(params.get("download_traffic_csvs") or {}),
         )
         .call()

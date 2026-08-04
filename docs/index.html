@@ -50,7 +50,7 @@
     </ul>
 
     <h2>Requirements</h2>
-    <p><strong>A Wildlife Trade Portal account.</strong> The workflow logs in to <a href="https://www.wildlifetradeportal.org/">wildlifetradeportal.org</a> on your behalf with your email and password and downloads the incidents recorded within your configured time range &mdash; no manual CSV export/upload is required. Behind the scenes it downloads three portal export types (an incident/case export, a species/commodity export, and a trade-route/location export) and merges them on a shared <code>Report ID</code> column. See the <a href="user-guide.html#requirements">User Guide</a> for the exact column breakdown.</p>
+    <p><strong>A Wildlife Trade Portal account.</strong> The workflow connects directly to the <a href="https://www.wildlifetradeportal.org/">wildlifetradeportal.org</a> API with your email and password (or an access token) and searches for incidents recorded within your configured time range, scoped by default to Rwanda, Uganda, and Congo, Democratic Republic of The &mdash; no manual CSV export/upload, and no browser, is required. Behind the scenes it exports up to three CSVs (an incident/case export, a species/commodity export, and a trade-route/location export) and merges them on a shared <code>Report ID</code> column. See the <a href="user-guide.html#requirements">User Guide</a> for the exact column breakdown.</p>
     <p>The GVL 30km buffer boundary is downloaded automatically from Dropbox at runtime &mdash; no local copy is required.</p>
 
     <h2>Get started</h2>

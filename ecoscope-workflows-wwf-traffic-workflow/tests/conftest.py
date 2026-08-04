@@ -41,9 +41,7 @@ SNAPSHOT_DIFF_OUTPUT_DIRNAME = ARTIFACTS.parent / "__diff_output__"
 TEST_CASES_YAML = ARTIFACTS.parent / "test-cases.yaml"
 MATCHSPEC_OVERRIDE = "ecoscope-workflows-wwf-traffic-workflow"
 RESULTS_ENV_VAR = "ECOSCOPE_WORKFLOWS_RESULTS"
-IO_TASKS_IMPORTABLE_REFERENCES = [
-    "ecoscope_workflows_ext_wwf_virunga.tasks.io.connect_to_traffic_portal_with_credentials",
-]
+IO_TASKS_IMPORTABLE_REFERENCES = []
 
 yaml = ruamel.yaml.YAML(typ="safe")
 
