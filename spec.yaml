@@ -13,7 +13,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-wwf-virunga
-    version: "0.0.0rc7.*"
+    version: "0.0.0rc8.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: pydeck
