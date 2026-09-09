@@ -38,7 +38,7 @@
       },
       "type": "object",
       "required": [],
-      "title": "Connect to traffic portal"
+      "title": "Wildlife Trade Portal Connection"
     },
     "time_range": {
       "additionalProperties": false,
@@ -315,7 +315,7 @@
       },
       "type": "object",
       "required": [],
-      "title": "Configure Basemaps"
+      "title": "Configure Basemap Layers"
     },
     "load_extra_data": {
       "additionalProperties": false,
@@ -330,7 +330,7 @@
         "file_path"
       ],
       "type": "object",
-      "title": "Load Extra Data"
+      "title": "Additional Data"
     },
     "incident_species_colormap": {
       "additionalProperties": false,
@@ -353,7 +353,7 @@
       },
       "type": "object",
       "required": [],
-      "title": "Select colormap to use for species and incidents"
+      "title": "Apply Colormap"
     },
     "zoom_to_envelope": {
       "additionalProperties": false,

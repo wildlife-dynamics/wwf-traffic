@@ -5,8 +5,8 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: 471cdf441ecee374d32c86c4617e339dc302d4bf3dfe29ef2716661993419746
-artifacts_sha256_strict: f4fae44626f10c3381b75c03afa831ba2955d2e0f88f83eb99bc5592574089c9
+artifacts_sha256_basic: e1851eef47e5e24121bcb4ad3603e7efad60c81286426f696573d1e729410908
+artifacts_sha256_strict: 3566de332ab2a80cb2eaf75e89c50530eb4437e4103191a37505621449632215
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
   name: ecoscope-platform
@@ -27,7 +27,7 @@ installed_requirements:
   name: opentelemetry-sdk
   version: {version: ==1.44.0}
 params_sha256: 25a5b908cd34dd01deaddd15c7338817441ffb1c95e0c138cd1c47fc509eee83
-spec_sha256: 5e508f0909fff0c4557c3e5765130f9a22851d63fcd6840b695e73e81c60a0bc
+spec_sha256: 9b6bb8a9dc46f936423d0b308c416b6e81e5c7311e6f74bf168c4b5c287c3e51
 
 ```
 

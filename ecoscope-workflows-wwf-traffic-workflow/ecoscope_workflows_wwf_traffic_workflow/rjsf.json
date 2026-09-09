@@ -38,7 +38,7 @@
       },
       "type": "object",
       "required": [],
-      "title": "Connect to traffic portal",
+      "title": "Wildlife Trade Portal Connection",
       "description": "Connect to the TRAFFIC Wildlife Trade Portal. Use the same email and password you used when signing up on this platform: https://www.wildlifetradeportal.org/ "
     },
     "time_range": {
@@ -311,7 +311,7 @@
       },
       "type": "object",
       "required": [],
-      "title": "Configure Basemaps",
+      "title": "Configure Basemap Layers",
       "description": "The background map tile layers used when rendering the incident and species maps in this report. The defaults provide topographic and satellite imagery; only change these if you need a different base map source."
     },
     "load_extra_data": {
@@ -327,7 +327,7 @@
         "file_path"
       ],
       "type": "object",
-      "title": "Load Extra Data",
+      "title": "Additional Data",
       "description": "Path to an additional local CSV file of incident records to merge with the data retrieved from the Wildlife Trade Portal"
     },
     "incident_species_colormap": {
@@ -351,7 +351,7 @@
       },
       "type": "object",
       "required": [],
-      "title": "Select colormap to use for species and incidents",
+      "title": "Apply Colormap",
       "description": "The color palette used to visually distinguish species and incident categories across the charts and maps in this report."
     },
     "Map Zoom & Extent": {
