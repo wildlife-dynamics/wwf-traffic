@@ -13,7 +13,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-wwf-virunga
-    version: "0.0.0rc8.*"
+    version: "0.0.5.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: pydeck
@@ -67,10 +67,6 @@ rjsf-overrides:
     incident_species_colormap.description: >-
       The color palette used to visually distinguish species and incident
       categories across the charts and maps in this report.
-
-    load_extra_data.description: >-
-      Path to an additional local CSV file of incident records to merge with
-      the data retrieved from the Wildlife Trade Portal
 
     time_range.description: >-
       The time range set here is used to retrieve incidents data from
@@ -342,11 +338,21 @@ workflow:
       remove_source: false 
       column_prefix: incident 
   
+  - name: Download additional data
+    id: additional_data
+    task: fetch_and_persist_file 
+    partial: 
+      url: "https://www.dropbox.com/scl/fi/9i4pt82jfjrpijj9rxrcj/extra-events.csv?rlkey=g7snvphzf1imttdu1k6sxgdvh&st=6gfabc24&dl=0"
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: true 
+      retries: 3 
+      unzip: false 
+
   - name: Additional Data
     id: load_extra_data
     task: load_df
     partial:
-      #file_path: null # TODO: set path to extra data file
+      file_path: ${{ workflow.additional_data.return }}
       layer: null
       deserialize_json: false
 
@@ -681,8 +687,8 @@ workflow:
       - name: null
         id: zoom_to_envelope 
         task: ecoscope_workflows_ext_ste.tasks.spatial_operations.envelope_gdf
-        # partial:
-        #   expansion_factor: 1.05
+        partial:
+          expansion_factor: 1.15
         mapvalues: 
           argnames: gdf 
           argvalues: ${{ workflow.split_events_by_group.return }}
@@ -957,27 +963,53 @@ workflow:
   # Widgets: comparison / summary stat cards
   # ============================================================
 
-  - name: Sum total incidents
-    id: total_incidents_sum
-    task: dataframe_column_sum
+  - name: Draw Total Incidents card
+    id: total_incidents_card
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.draw_period_comparison
+    skipif:
+      conditions:
+        - never
     partial:
-      column_name: "no_of_incidents"
+      period_col: "incident_year"
+      value_col: "no_of_incidents"
+      current_period: null
+      # big number is the all-time total; the badge compares the latest year with the one before
+      headline: "total"
+      total_rate_cols: null
+      delta_mode: "relative"
+      value_suffix: ""
+      higher_is_better: true
+      decimal_places: 0
+      show_history: true
+      history_style: "line"
+      shade_history: true
+      widget_id: null
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.incidents_per_year.return }}
 
+  - name: Persist Total Incidents card
+    id: persist_total_incidents_card
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      filename_suffix: total_incidents
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.total_incidents_card.return }}
+
   - name: Create Total Incidents widget
     id: widget_total_incidents
-    task: create_single_value_widget_single_view
+    task: create_plot_widget_single_view
     skipif:
       conditions:
-        - any_is_empty_df
+        - never
     partial:
       title: "Total Number of Incidents"
-      decimal_places: 0
     map:
       argnames: [view, data]
-      argvalues: ${{ workflow.total_incidents_sum.return }}
+      argvalues: ${{ workflow.persist_total_incidents_card.return }}
 
   - name: Merge per group Total Incidents widgets
     id: widget_total_incidents_grouped
@@ -985,22 +1017,49 @@ workflow:
     partial:
       widgets: ${{ workflow.widget_total_incidents.return }}
 
+  - name: Draw Incidents Period-over-Period card
+    id: incidents_yoy_card
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.draw_period_comparison
+    skipif:
+      conditions:
+        - never
+    partial:
+      period_col: "incident_year"
+      value_col: "no_of_incidents"
+      current_period: null
+      # a rise renders green, a drop red; set false to invert, null for grey
+      higher_is_better: true
+      decimal_places: 0
+      show_history: true
+      history_style: "line"  # or "bar"
+      shade_history: true  # line style only
+      widget_id: null
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.incidents_per_year.return }}
+
+  - name: Persist Incidents Period-over-Period card
+    id: persist_incidents_yoy_card
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      filename_suffix: incidents_yoy
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.incidents_yoy_card.return }}
+
   - name: Create Incidents Period-over-Period widget
     id: widget_incidents_yoy
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.create_period_comparison_widget
+    task: create_plot_widget_single_view
     skipif:
       conditions:
         - never
     partial:
       title: "Incidents This Year vs Last Year"
-      period_col: "incident_year"
-      value_col: "no_of_incidents"
-      decimal_places: 0
-      current_period: null
-      view: null 
     map:
-      argnames: [view, df]
-      argvalues: ${{ workflow.incidents_per_year.return }}
+      argnames: [view, data]
+      argvalues: ${{ workflow.persist_incidents_yoy_card.return }}
 
   - name: Merge per group Incidents Period-over-Period widgets
     id: widget_incidents_yoy_grouped
@@ -1053,27 +1112,52 @@ workflow:
     partial:
       widgets: ${{ workflow.widget_top_species.return }}
 
-  - name: Sum total arrested
-    id: total_arrested_sum
-    task: dataframe_column_sum
+  - name: Draw Total Arrested card
+    id: total_arrested_card
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.draw_period_comparison
+    skipif:
+      conditions:
+        - never
     partial:
-      column_name: "people_arrested"
+      period_col: "incident_year"
+      value_col: "people_arrested"
+      current_period: null
+      headline: "total"
+      total_rate_cols: null
+      delta_mode: "relative"
+      value_suffix: ""
+      higher_is_better: true
+      decimal_places: 0
+      show_history: true
+      history_style: "line"
+      shade_history: true
+      widget_id: null
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.total_arrested.return }}
 
+  - name: Persist Total Arrested card
+    id: persist_total_arrested_card
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      filename_suffix: total_arrested
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.total_arrested_card.return }}
+
   - name: Create Total Arrested widget
     id: widget_total_arrested
-    task: create_single_value_widget_single_view
+    task: create_plot_widget_single_view
     skipif:
       conditions:
-        - any_is_empty_df
+        - never
     partial:
       title: "Total Suspects Arrested"
-      decimal_places: 0
     map:
       argnames: [view, data]
-      argvalues: ${{ workflow.total_arrested_sum.return }}
+      argvalues: ${{ workflow.persist_total_arrested_card.return }}
 
   - name: Merge per group Total Arrested widgets
     id: widget_total_arrested_grouped
@@ -1081,27 +1165,52 @@ workflow:
     partial:
       widgets: ${{ workflow.widget_total_arrested.return }}
 
-  - name: Sum total convicted
-    id: total_convicted_sum
-    task: dataframe_column_sum
+  - name: Draw Total Convicted card
+    id: total_convicted_card
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.draw_period_comparison
+    skipif:
+      conditions:
+        - never
     partial:
-      column_name: "people_imprisoned"
+      period_col: "incident_year"
+      value_col: "people_imprisoned"
+      current_period: null
+      headline: "total"
+      total_rate_cols: null
+      delta_mode: "relative"
+      value_suffix: ""
+      higher_is_better: true
+      decimal_places: 0
+      show_history: true
+      history_style: "line"
+      shade_history: true
+      widget_id: null
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.total_imprisoned.return }}
 
+  - name: Persist Total Convicted card
+    id: persist_total_convicted_card
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      filename_suffix: total_convicted
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.total_convicted_card.return }}
+
   - name: Create Total Convicted widget
     id: widget_total_convicted
-    task: create_single_value_widget_single_view
+    task: create_plot_widget_single_view
     skipif:
       conditions:
-        - any_is_empty_df
+        - never
     partial:
       title: "Total Suspects Convicted"
-      decimal_places: 0
     map:
       argnames: [view, data]
-      argvalues: ${{ workflow.total_convicted_sum.return }}
+      argvalues: ${{ workflow.persist_total_convicted_card.return }}
 
   - name: Merge per group Total Convicted widgets
     id: widget_total_convicted_grouped
@@ -1109,50 +1218,55 @@ workflow:
     partial:
       widgets: ${{ workflow.widget_total_convicted.return }}
 
-  - name: Zip arrested and convicted sums
-    id: zip_arrested_convicted_sums
+  - name: Draw Conviction Rate card
+    id: conviction_rate_card
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.draw_period_comparison
     skipif:
       conditions:
-        - any_dependency_skipped
-        - any_keyed_iterables_are_skips
-      unpack_depth: 1
-    task: groupbykey
+        - never
     partial:
-      iterables:
-        - ${{ workflow.total_convicted_sum.return }}
-        - ${{ workflow.total_arrested_sum.return }}
-
-  - name: Divide convicted by arrested
-    id: conviction_ratio
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.safe_divide
-    partial:
-      fill_invalid: 0.0
+      period_col: "incident_year"
+      value_col: "conviction_rate"
+      current_period: null
+      # yearly rates can't be summed: the all-time rate is sum(convicted) / sum(arrested)
+      headline: "total"
+      total_rate_cols: ["people_imprisoned", "people_arrested"]
+      total_rate_as_percent: true
+      # already a percentage, so the badge shows the change in percentage points
+      delta_mode: "percentage_points"
+      value_suffix: "%"
+      higher_is_better: true
+      decimal_places: 1
+      show_history: true
+      history_style: "line"
+      shade_history: true
+      widget_id: null
     mapvalues:
-      argnames: [a, b]
-      argvalues: ${{ workflow.zip_arrested_convicted_sums.return }}
+      argnames: df
+      argvalues: ${{ workflow.add_conviction_rate.return }}
 
-  - name: Convert ratio to percent
-    id: conviction_rate_pct
-    task: apply_arithmetic_operation
+  - name: Persist Conviction Rate card
+    id: persist_conviction_rate_card
+    task: persist_text
     partial:
-      b: 100
-      operation: "multiply"
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      filename_suffix: conviction_rate
     mapvalues:
-      argnames: a
-      argvalues: ${{ workflow.conviction_ratio.return }}
+      argnames: text
+      argvalues: ${{ workflow.conviction_rate_card.return }}
 
   - name: Create Conviction Rate widget
     id: widget_conviction_rate
-    task: create_single_value_widget_single_view
+    task: create_plot_widget_single_view
     skipif:
       conditions:
-        - any_is_empty_df
+        - never
     partial:
       title: "Conviction Rate"
-      decimal_places: 1
     map:
       argnames: [view, data]
-      argvalues: ${{ workflow.conviction_rate_pct.return }}
+      argvalues: ${{ workflow.persist_conviction_rate_card.return }}
 
   - name: Merge per group Conviction Rate widgets
     id: widget_conviction_rate_grouped
@@ -1160,27 +1274,52 @@ workflow:
     partial:
       widgets: ${{ workflow.widget_conviction_rate.return }}
 
-  - name: Sum total ivory seized
-    id: total_ivory_sum
-    task: dataframe_column_sum
+  - name: Draw Total Ivory Seized card
+    id: total_ivory_card
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.results.draw_period_comparison
+    skipif:
+      conditions:
+        - never
     partial:
-      column_name: "total_seizure_of_ivory"
+      period_col: "incident_year"
+      value_col: "total_seizure_of_ivory"
+      current_period: null
+      headline: "total"
+      total_rate_cols: null
+      delta_mode: "relative"
+      value_suffix: ""
+      higher_is_better: true
+      decimal_places: 1
+      show_history: true
+      history_style: "line"
+      shade_history: true
+      widget_id: null
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.ivory_weight_per_year.return }}
 
+  - name: Persist Total Ivory Seized card
+    id: persist_total_ivory_card
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      filename_suffix: total_ivory
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.total_ivory_card.return }}
+
   - name: Create Total Ivory Seized widget
     id: widget_total_ivory
-    task: create_single_value_widget_single_view
+    task: create_plot_widget_single_view
     skipif:
       conditions:
-        - any_is_empty_df
+        - never
     partial:
       title: "Total Seizures of Ivory (kg)"
-      decimal_places: 1
     map:
       argnames: [view, data]
-      argvalues: ${{ workflow.total_ivory_sum.return }}
+      argvalues: ${{ workflow.persist_total_ivory_card.return }}
 
   - name: Merge per group Total Ivory Seized widgets
     id: widget_total_ivory_grouped
