@@ -2,12 +2,6 @@
 import os
 from typing import Any
 
-from ecoscope.platform.tasks.analysis import (
-    apply_arithmetic_operation as apply_arithmetic_operation,
-)
-from ecoscope.platform.tasks.analysis import (
-    dataframe_column_sum as dataframe_column_sum,
-)
 from ecoscope.platform.tasks.config import set_workflow_details as set_workflow_details
 from ecoscope.platform.tasks.filter import (
     get_timezone_from_time_range as get_timezone_from_time_range,
@@ -23,9 +17,6 @@ from ecoscope.platform.tasks.results import (
 )
 from ecoscope.platform.tasks.results import (
     create_plot_widget_single_view as create_plot_widget_single_view,
-)
-from ecoscope.platform.tasks.results import (
-    create_single_value_widget_single_view as create_single_value_widget_single_view,
 )
 from ecoscope.platform.tasks.results import (
     create_table_widget_single_view as create_table_widget_single_view,
@@ -105,7 +96,7 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
     draw_bar_chart as draw_bar_chart_1,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.results import (
-    create_period_comparison_widget as create_period_comparison_widget,
+    draw_period_comparison as draw_period_comparison,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.results import (
     get_top_category as get_top_category,
@@ -130,9 +121,6 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
     extract_trade_route as extract_trade_route,
-)
-from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
-    safe_divide as safe_divide,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
     set_color_palette as set_color_palette,
@@ -692,6 +680,30 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
+    additional_data = (
+        task(fetch_and_persist_file)
+        .validate()
+        .set_task_instance_id("additional_data")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            url="https://www.dropbox.com/scl/fi/9i4pt82jfjrpijj9rxrcj/extra-events.csv?rlkey=g7snvphzf1imttdu1k6sxgdvh&st=6gfabc24&dl=0",
+            output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            overwrite_existing=True,
+            retries=3,
+            unzip=False,
+            **(params.get("additional_data") or {}),
+        )
+        .call()
+    )
+
     load_extra_data = (
         task(load_df)
         .validate()
@@ -706,7 +718,10 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            layer=None, deserialize_json=False, **(params.get("load_extra_data") or {})
+            file_path=additional_data,
+            layer=None,
+            deserialize_json=False,
+            **(params.get("load_extra_data") or {}),
         )
         .call()
     )
@@ -1306,7 +1321,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             unpack_depth=1,
         )
-        .partial(**(params.get("zoom_to_envelope") or {}))
+        .partial(expansion_factor=1.15, **(params.get("zoom_to_envelope") or {}))
         .mapvalues(argnames=["gdf"], argvalues=split_events_by_group)
     )
 
@@ -1812,10 +1827,41 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
-    total_incidents_sum = (
-        task(dataframe_column_sum)
+    total_incidents_card = (
+        task(draw_period_comparison)
         .validate()
-        .set_task_instance_id("total_incidents_sum")
+        .set_task_instance_id("total_incidents_card")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            period_col="incident_year",
+            value_col="no_of_incidents",
+            current_period=None,
+            headline="total",
+            total_rate_cols=None,
+            delta_mode="relative",
+            value_suffix="",
+            higher_is_better=True,
+            decimal_places=0,
+            show_history=True,
+            history_style="line",
+            shade_history=True,
+            widget_id=None,
+            **(params.get("total_incidents_card") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=incidents_per_year)
+    )
+
+    persist_total_incidents_card = (
+        task(persist_text)
+        .validate()
+        .set_task_instance_id("persist_total_incidents_card")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -1826,29 +1872,31 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            column_name="no_of_incidents", **(params.get("total_incidents_sum") or {})
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            filename_suffix="total_incidents",
+            **(params.get("persist_total_incidents_card") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=incidents_per_year)
+        .mapvalues(argnames=["text"], argvalues=total_incidents_card)
     )
 
     widget_total_incidents = (
-        task(create_single_value_widget_single_view)
+        task(create_plot_widget_single_view)
         .validate()
         .set_task_instance_id("widget_total_incidents")
         .handle_errors()
         .with_tracing()
         .skipif(
             conditions=[
-                any_is_empty_df,
+                never,
             ],
             unpack_depth=1,
         )
         .partial(
             title="Total Number of Incidents",
-            decimal_places=0,
             **(params.get("widget_total_incidents") or {}),
         )
-        .map(argnames=["view", "data"], argvalues=total_incidents_sum)
+        .map(argnames=["view", "data"], argvalues=persist_total_incidents_card)
     )
 
     widget_total_incidents_grouped = (
@@ -1871,8 +1919,57 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
+    incidents_yoy_card = (
+        task(draw_period_comparison)
+        .validate()
+        .set_task_instance_id("incidents_yoy_card")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            period_col="incident_year",
+            value_col="no_of_incidents",
+            current_period=None,
+            higher_is_better=True,
+            decimal_places=0,
+            show_history=True,
+            history_style="line",
+            shade_history=True,
+            widget_id=None,
+            **(params.get("incidents_yoy_card") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=incidents_per_year)
+    )
+
+    persist_incidents_yoy_card = (
+        task(persist_text)
+        .validate()
+        .set_task_instance_id("persist_incidents_yoy_card")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            filename_suffix="incidents_yoy",
+            **(params.get("persist_incidents_yoy_card") or {}),
+        )
+        .mapvalues(argnames=["text"], argvalues=incidents_yoy_card)
+    )
+
     widget_incidents_yoy = (
-        task(create_period_comparison_widget)
+        task(create_plot_widget_single_view)
         .validate()
         .set_task_instance_id("widget_incidents_yoy")
         .handle_errors()
@@ -1885,14 +1982,9 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             title="Incidents This Year vs Last Year",
-            period_col="incident_year",
-            value_col="no_of_incidents",
-            decimal_places=0,
-            current_period=None,
-            view=None,
             **(params.get("widget_incidents_yoy") or {}),
         )
-        .map(argnames=["view", "df"], argvalues=incidents_per_year)
+        .map(argnames=["view", "data"], argvalues=persist_incidents_yoy_card)
     )
 
     widget_incidents_yoy_grouped = (
@@ -2002,10 +2094,41 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
-    total_arrested_sum = (
-        task(dataframe_column_sum)
+    total_arrested_card = (
+        task(draw_period_comparison)
         .validate()
-        .set_task_instance_id("total_arrested_sum")
+        .set_task_instance_id("total_arrested_card")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            period_col="incident_year",
+            value_col="people_arrested",
+            current_period=None,
+            headline="total",
+            total_rate_cols=None,
+            delta_mode="relative",
+            value_suffix="",
+            higher_is_better=True,
+            decimal_places=0,
+            show_history=True,
+            history_style="line",
+            shade_history=True,
+            widget_id=None,
+            **(params.get("total_arrested_card") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=total_arrested)
+    )
+
+    persist_total_arrested_card = (
+        task(persist_text)
+        .validate()
+        .set_task_instance_id("persist_total_arrested_card")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -2016,29 +2139,31 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            column_name="people_arrested", **(params.get("total_arrested_sum") or {})
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            filename_suffix="total_arrested",
+            **(params.get("persist_total_arrested_card") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=total_arrested)
+        .mapvalues(argnames=["text"], argvalues=total_arrested_card)
     )
 
     widget_total_arrested = (
-        task(create_single_value_widget_single_view)
+        task(create_plot_widget_single_view)
         .validate()
         .set_task_instance_id("widget_total_arrested")
         .handle_errors()
         .with_tracing()
         .skipif(
             conditions=[
-                any_is_empty_df,
+                never,
             ],
             unpack_depth=1,
         )
         .partial(
             title="Total Suspects Arrested",
-            decimal_places=0,
             **(params.get("widget_total_arrested") or {}),
         )
-        .map(argnames=["view", "data"], argvalues=total_arrested_sum)
+        .map(argnames=["view", "data"], argvalues=persist_total_arrested_card)
     )
 
     widget_total_arrested_grouped = (
@@ -2061,10 +2186,41 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
-    total_convicted_sum = (
-        task(dataframe_column_sum)
+    total_convicted_card = (
+        task(draw_period_comparison)
         .validate()
-        .set_task_instance_id("total_convicted_sum")
+        .set_task_instance_id("total_convicted_card")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            period_col="incident_year",
+            value_col="people_imprisoned",
+            current_period=None,
+            headline="total",
+            total_rate_cols=None,
+            delta_mode="relative",
+            value_suffix="",
+            higher_is_better=True,
+            decimal_places=0,
+            show_history=True,
+            history_style="line",
+            shade_history=True,
+            widget_id=None,
+            **(params.get("total_convicted_card") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=total_imprisoned)
+    )
+
+    persist_total_convicted_card = (
+        task(persist_text)
+        .validate()
+        .set_task_instance_id("persist_total_convicted_card")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -2075,29 +2231,31 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            column_name="people_imprisoned", **(params.get("total_convicted_sum") or {})
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            filename_suffix="total_convicted",
+            **(params.get("persist_total_convicted_card") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=total_imprisoned)
+        .mapvalues(argnames=["text"], argvalues=total_convicted_card)
     )
 
     widget_total_convicted = (
-        task(create_single_value_widget_single_view)
+        task(create_plot_widget_single_view)
         .validate()
         .set_task_instance_id("widget_total_convicted")
         .handle_errors()
         .with_tracing()
         .skipif(
             conditions=[
-                any_is_empty_df,
+                never,
             ],
             unpack_depth=1,
         )
         .partial(
             title="Total Suspects Convicted",
-            decimal_places=0,
             **(params.get("widget_total_convicted") or {}),
         )
-        .map(argnames=["view", "data"], argvalues=total_convicted_sum)
+        .map(argnames=["view", "data"], argvalues=persist_total_convicted_card)
     )
 
     widget_total_convicted_grouped = (
@@ -2120,47 +2278,42 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
-    zip_arrested_convicted_sums = (
-        task(groupbykey)
+    conviction_rate_card = (
+        task(draw_period_comparison)
         .validate()
-        .set_task_instance_id("zip_arrested_convicted_sums")
+        .set_task_instance_id("conviction_rate_card")
         .handle_errors()
         .with_tracing()
         .skipif(
             conditions=[
-                any_dependency_skipped,
-                any_keyed_iterables_are_skips,
+                never,
             ],
             unpack_depth=1,
         )
         .partial(
-            iterables=[total_convicted_sum, total_arrested_sum],
-            **(params.get("zip_arrested_convicted_sums") or {}),
+            period_col="incident_year",
+            value_col="conviction_rate",
+            current_period=None,
+            headline="total",
+            total_rate_cols=["people_imprisoned", "people_arrested"],
+            total_rate_as_percent=True,
+            delta_mode="percentage_points",
+            value_suffix="%",
+            higher_is_better=True,
+            decimal_places=1,
+            show_history=True,
+            history_style="line",
+            shade_history=True,
+            widget_id=None,
+            **(params.get("conviction_rate_card") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=add_conviction_rate)
     )
 
-    conviction_ratio = (
-        task(safe_divide)
+    persist_conviction_rate_card = (
+        task(persist_text)
         .validate()
-        .set_task_instance_id("conviction_ratio")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(fill_invalid=0.0, **(params.get("conviction_ratio") or {}))
-        .mapvalues(argnames=["a", "b"], argvalues=zip_arrested_convicted_sums)
-    )
-
-    conviction_rate_pct = (
-        task(apply_arithmetic_operation)
-        .validate()
-        .set_task_instance_id("conviction_rate_pct")
+        .set_task_instance_id("persist_conviction_rate_card")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -2171,29 +2324,30 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            b=100, operation="multiply", **(params.get("conviction_rate_pct") or {})
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            filename_suffix="conviction_rate",
+            **(params.get("persist_conviction_rate_card") or {}),
         )
-        .mapvalues(argnames=["a"], argvalues=conviction_ratio)
+        .mapvalues(argnames=["text"], argvalues=conviction_rate_card)
     )
 
     widget_conviction_rate = (
-        task(create_single_value_widget_single_view)
+        task(create_plot_widget_single_view)
         .validate()
         .set_task_instance_id("widget_conviction_rate")
         .handle_errors()
         .with_tracing()
         .skipif(
             conditions=[
-                any_is_empty_df,
+                never,
             ],
             unpack_depth=1,
         )
         .partial(
-            title="Conviction Rate",
-            decimal_places=1,
-            **(params.get("widget_conviction_rate") or {}),
+            title="Conviction Rate", **(params.get("widget_conviction_rate") or {})
         )
-        .map(argnames=["view", "data"], argvalues=conviction_rate_pct)
+        .map(argnames=["view", "data"], argvalues=persist_conviction_rate_card)
     )
 
     widget_conviction_rate_grouped = (
@@ -2216,10 +2370,41 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
-    total_ivory_sum = (
-        task(dataframe_column_sum)
+    total_ivory_card = (
+        task(draw_period_comparison)
         .validate()
-        .set_task_instance_id("total_ivory_sum")
+        .set_task_instance_id("total_ivory_card")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            period_col="incident_year",
+            value_col="total_seizure_of_ivory",
+            current_period=None,
+            headline="total",
+            total_rate_cols=None,
+            delta_mode="relative",
+            value_suffix="",
+            higher_is_better=True,
+            decimal_places=1,
+            show_history=True,
+            history_style="line",
+            shade_history=True,
+            widget_id=None,
+            **(params.get("total_ivory_card") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=ivory_weight_per_year)
+    )
+
+    persist_total_ivory_card = (
+        task(persist_text)
+        .validate()
+        .set_task_instance_id("persist_total_ivory_card")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -2230,30 +2415,31 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            column_name="total_seizure_of_ivory",
-            **(params.get("total_ivory_sum") or {}),
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            filename_suffix="total_ivory",
+            **(params.get("persist_total_ivory_card") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=ivory_weight_per_year)
+        .mapvalues(argnames=["text"], argvalues=total_ivory_card)
     )
 
     widget_total_ivory = (
-        task(create_single_value_widget_single_view)
+        task(create_plot_widget_single_view)
         .validate()
         .set_task_instance_id("widget_total_ivory")
         .handle_errors()
         .with_tracing()
         .skipif(
             conditions=[
-                any_is_empty_df,
+                never,
             ],
             unpack_depth=1,
         )
         .partial(
             title="Total Seizures of Ivory (kg)",
-            decimal_places=1,
             **(params.get("widget_total_ivory") or {}),
         )
-        .map(argnames=["view", "data"], argvalues=total_ivory_sum)
+        .map(argnames=["view", "data"], argvalues=persist_total_ivory_card)
     )
 
     widget_total_ivory_grouped = (
