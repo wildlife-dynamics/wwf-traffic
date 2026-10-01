@@ -1851,6 +1851,10 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            period_label_col="incident_year",
+            agg_function="sum",
+            as_percent=False,
+            total_rate_as_percent=False,
             period_col="incident_year",
             value_col="no_of_incidents",
             current_period=None,
@@ -1943,9 +1947,17 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            period_label_col=None,
+            agg_function=None,
+            as_percent=False,
+            total_rate_as_percent=False,
             period_col="incident_year",
             value_col="no_of_incidents",
             current_period=None,
+            headline="current",
+            total_rate_cols=None,
+            delta_mode="relative",
+            value_suffix="",
             higher_is_better=True,
             decimal_places=0,
             show_history=True,
@@ -2118,6 +2130,10 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            period_label_col=None,
+            agg_function=None,
+            as_percent=False,
+            total_rate_as_percent=False,
             period_col="incident_year",
             value_col="people_arrested",
             current_period=None,
@@ -2210,6 +2226,10 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            period_label_col=None,
+            agg_function=None,
+            as_percent=False,
+            total_rate_as_percent=False,
             period_col="incident_year",
             value_col="people_imprisoned",
             current_period=None,
@@ -2302,6 +2322,9 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            period_label_col=None,
+            agg_function=None,
+            as_percent=False,
             period_col="incident_year",
             value_col="conviction_rate",
             current_period=None,
@@ -2394,6 +2417,10 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            period_label_col=None,
+            agg_function=None,
+            as_percent=False,
+            total_rate_as_percent=False,
             period_col="incident_year",
             value_col="total_seizure_of_ivory",
             current_period=None,

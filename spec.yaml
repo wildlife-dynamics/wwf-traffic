@@ -970,6 +970,10 @@ workflow:
       conditions:
         - never
     partial:
+      period_label_col: "incident_year"
+      agg_function: "sum"
+      as_percent: false
+      total_rate_as_percent: false
       period_col: "incident_year"
       value_col: "no_of_incidents"
       current_period: null
@@ -1024,9 +1028,17 @@ workflow:
       conditions:
         - never
     partial:
+      period_label_col: null
+      agg_function: null
+      as_percent: false
+      total_rate_as_percent: false
       period_col: "incident_year"
       value_col: "no_of_incidents"
       current_period: null
+      headline: "current"
+      total_rate_cols: null
+      delta_mode: "relative"
+      value_suffix: ""
       # a rise renders green, a drop red; set false to invert, null for grey
       higher_is_better: true
       decimal_places: 0
@@ -1119,6 +1131,10 @@ workflow:
       conditions:
         - never
     partial:
+      period_label_col: null
+      agg_function: null
+      as_percent: false
+      total_rate_as_percent: false
       period_col: "incident_year"
       value_col: "people_arrested"
       current_period: null
@@ -1172,6 +1188,10 @@ workflow:
       conditions:
         - never
     partial:
+      period_label_col: null
+      agg_function: null
+      as_percent: false
+      total_rate_as_percent: false
       period_col: "incident_year"
       value_col: "people_imprisoned"
       current_period: null
@@ -1225,6 +1245,9 @@ workflow:
       conditions:
         - never
     partial:
+      period_label_col: null
+      agg_function: null
+      as_percent: false
       period_col: "incident_year"
       value_col: "conviction_rate"
       current_period: null
@@ -1281,6 +1304,10 @@ workflow:
       conditions:
         - never
     partial:
+      period_label_col: null
+      agg_function: null
+      as_percent: false
+      total_rate_as_percent: false
       period_col: "incident_year"
       value_col: "total_seizure_of_ivory"
       current_period: null

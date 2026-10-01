@@ -295,7 +295,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-26.10.0-ha5cdc1e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-7.6.3-pyh5ded981_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/numba-0.68.0-py312h80505a6_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/numba-0.68.0-py312h80505a6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.5.3-py312he827f4e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/obstore-0.6.0-py312h12e396e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openjpeg-2.5.4-heb1ab33_2.conda
@@ -750,7 +750,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nodejs-26.10.0-hfa2f511_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-7.6.3-pyh5ded981_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numba-0.68.0-py312ha0853ce_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numba-0.68.0-py312ha0853ce_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numpy-2.5.3-py312hfb93532_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/obstore-0.6.0-py312h8cbf658_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/openjpeg-2.5.4-h504851f_2.conda
@@ -1198,7 +1198,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nodejs-26.10.0-hb4a83e6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-7.6.3-pyh5ded981_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/numba-0.68.0-py312h3369ccd_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/numba-0.68.0-py312h3369ccd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/numpy-2.5.3-py312h66ee8b4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/obstore-0.6.0-py312h0d0de52_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/openjpeg-2.5.4-he4eae51_1.conda
@@ -1643,7 +1643,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-24.21.0-hb275ff0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-7.6.3-pyh5ded981_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numba-0.68.0-py312h9052ff5_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numba-0.68.0-py312h9052ff5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.5.3-py312hff34920_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/obstore-0.6.0-py312hcd83bfe_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openjpeg-2.5.4-h4d1e80c_2.conda
@@ -2078,7 +2078,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/nodejs-24.21.0-h80d1838_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-7.6.3-pyh5ded981_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/numba-0.68.0-py312ha1a9051_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/numba-0.68.0-py312ha1a9051_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.5.3-py312ha3f287d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/obstore-0.6.0-py312h2615798_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openjpeg-2.5.4-h90fa87c_2.conda
@@ -16415,62 +16415,62 @@ packages:
   license_family: BSD
   size: 16817
   timestamp: 1733408419340
-- conda: https://conda.anaconda.org/conda-forge/linux-64/numba-0.68.0-py312h80505a6_0.conda
-  sha256: 21cc2cdfef4b43257c085a0bd9cad4117dcf2ce0565245b848ce0e608eb8eade
-  md5: 299fb172599853184e88d4d412d774ee
+- conda: https://conda.anaconda.org/conda-forge/linux-64/numba-0.68.0-py312h80505a6_1.conda
+  sha256: 8d56e0038318b7ddc2588f209dd1553667d8b2cf04c1e62c027e56dede448295
+  md5: e637e282879a2d6ec95189aba90e5bc1
   depends:
   - python
   - llvmlite >=0.50.0,<0.51.0a0
   - numpy >=1.22.3,<2.6
-  - libgcc >=15
-  - libstdcxx >=15
   - _openmp_mutex >=4.5
   - __glibc >=2.17,<3.0.a0
-  - python_abi 3.12.* *_cp312
-  - numpy >=1.25,<3
-  constrains:
-  - tbb >=2021.6.0
-  - libopenblas !=0.3.6
-  - cuda-version >=11.2
-  - cudatoolkit >=11.2
-  - scipy >=1.0
-  - cuda-python >=11.6
-  license: BSD-2-Clause
-  size: 6131988
-  timestamp: 1790815614209
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numba-0.68.0-py312ha0853ce_0.conda
-  sha256: 91067b2ff68ac4dbf7286aa62c58561a12436f7b28b30daeb91ae1d39249f622
-  md5: 3e7134ef7fce882c6d8378236eafc0df
-  depends:
-  - python
-  - llvmlite >=0.50.0,<0.51.0a0
-  - numpy >=1.22.3,<2.6
-  - _openmp_mutex >=4.5
   - libgcc >=15
   - libstdcxx >=15
   - numpy >=1.25,<3
   - python_abi 3.12.* *_cp312
   constrains:
   - tbb >=2021.6.0
+  - libopenblas !=0.3.6
   - cuda-version >=11.2
   - cudatoolkit >=11.2
   - scipy >=1.0
   - cuda-python >=11.6
   license: BSD-2-Clause
-  size: 6141325
-  timestamp: 1790815608072
-- conda: https://conda.anaconda.org/conda-forge/osx-64/numba-0.68.0-py312h3369ccd_0.conda
-  sha256: 2281c7d2f62197598820e6eb542a0feb094277c2d2bd484e25886ce738518c60
-  md5: 49da7e68799d15b6a8461dbb3b0eaa62
+  size: 6131980
+  timestamp: 1790835913658
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/numba-0.68.0-py312ha0853ce_1.conda
+  sha256: 03c63038268b54750fc5762226f4feb7eb7f527acd702f3c03ef0271db7e52a9
+  md5: 306627b85bbcecba8fd9b2bc14a66e79
   depends:
   - python
   - llvmlite >=0.50.0,<0.51.0a0
   - numpy >=1.22.3,<2.6
-  - libcxx >=21
-  - __osx >=11.0
-  - llvm-openmp >=21.1.8
+  - libgcc >=15
+  - _openmp_mutex >=4.5
+  - libstdcxx >=15
   - python_abi 3.12.* *_cp312
   - numpy >=1.25,<3
+  constrains:
+  - tbb >=2021.6.0
+  - cuda-version >=11.2
+  - cudatoolkit >=11.2
+  - scipy >=1.0
+  - cuda-python >=11.6
+  license: BSD-2-Clause
+  size: 6141222
+  timestamp: 1790835906104
+- conda: https://conda.anaconda.org/conda-forge/osx-64/numba-0.68.0-py312h3369ccd_1.conda
+  sha256: 535a02d68b23dcb103c1ad9beae16d5c2dfabe532bbfd4bfe84fc1a94f5e9c78
+  md5: 3ad048240033bc027e29c93be06925cf
+  depends:
+  - python
+  - llvmlite >=0.50.0,<0.51.0a0
+  - numpy >=1.22.3,<2.6
+  - llvm-openmp >=21.1.8
+  - libcxx >=21
+  - __osx >=11.0
+  - numpy >=1.25,<3
+  - python_abi 3.12.* *_cp312
   constrains:
   - tbb >=2021.6.0
   - libopenblas !=0.3.6
@@ -16479,18 +16479,18 @@ packages:
   - scipy >=1.0
   - cuda-python >=11.6
   license: BSD-2-Clause
-  size: 6118589
-  timestamp: 1790815694975
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/numba-0.68.0-py312h9052ff5_0.conda
-  sha256: aa89b2973a3c89a6409453783022de41a9c41bef2752f333e562919229ffcc0d
-  md5: 53d00c19530fc145c1544c76534dcdac
+  size: 6118587
+  timestamp: 1790835989196
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/numba-0.68.0-py312h9052ff5_1.conda
+  sha256: bedcaa7f608e7f04fcb25fba3fc9c505c665908d29aa9554e254096618046481
+  md5: 1ee7d8789312b098f86060167ec9c06c
   depends:
   - python
   - llvmlite >=0.50.0,<0.51.0a0
   - numpy >=1.22.3,<2.6
-  - llvm-openmp >=21.1.8
   - libcxx >=21
   - __osx >=11.0
+  - llvm-openmp >=21.1.8
   - python_abi 3.12.* *_cp312
   - numpy >=1.25,<3
   constrains:
@@ -16501,11 +16501,11 @@ packages:
   - scipy >=1.0
   - cuda-python >=11.6
   license: BSD-2-Clause
-  size: 6112541
-  timestamp: 1790815636355
-- conda: https://conda.anaconda.org/conda-forge/win-64/numba-0.68.0-py312ha1a9051_0.conda
-  sha256: d88701a1b1f3266c19b37a54e0a31128ace0b270af238f156ad76826ee53fa41
-  md5: 11e3f8ed5a93aa61dc7c3c4eb136b2da
+  size: 6112507
+  timestamp: 1790835922925
+- conda: https://conda.anaconda.org/conda-forge/win-64/numba-0.68.0-py312ha1a9051_1.conda
+  sha256: fbad7ed7b745de3519f7686e5cfc85a38ffac8a759af21072e576193f562ad02
+  md5: 7a72e8ced3b2b8c31650d672d5fdfdf5
   depends:
   - python
   - llvmlite >=0.50.0,<0.51.0a0
@@ -16523,8 +16523,8 @@ packages:
   - scipy >=1.0
   - cuda-python >=11.6
   license: BSD-2-Clause
-  size: 6122155
-  timestamp: 1790815610985
+  size: 6122250
+  timestamp: 1790835904969
 - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.5.3-py312he827f4e_0.conda
   sha256: 5b0e4c7757a2df883c5615a8f64bc4c113c4cd303ae6caa3ada5d397d114ce2a
   md5: 5abf073f2cf066f2f3d28229b3cbe94d
